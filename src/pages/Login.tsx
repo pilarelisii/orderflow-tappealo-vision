@@ -39,8 +39,9 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="flex items-center justify-center pb-2">
+        <CardHeader className="flex flex-col items-center justify-center pb-2">
           <img src={logoLaBici} alt="La Bici" className="h-32 object-contain" />
+          <p className="text-sm text-muted-foreground mt-2">powered by tappealo</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
