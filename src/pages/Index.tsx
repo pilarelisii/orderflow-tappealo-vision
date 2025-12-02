@@ -42,7 +42,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card px-6 py-4">
-        <img src={tappealoLogo} alt="Tappealo" className="h-8" />
+        <img src={tappealoLogo} alt="Tappealo" className="h-12" />
       </header>
 
       {/* Subheader */}
