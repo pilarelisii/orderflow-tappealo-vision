@@ -20,7 +20,8 @@ const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: strin
   entrante: { next: 'preparacion', label: 'Preparar' },
   preparacion: { next: 'retirar', label: 'Listo' },
   retirar: { next: 'enviar', label: 'Enviar' },
-  enviar: { next: null, label: '' },
+  enviar: { next: 'terminadas', label: 'Terminar' },
+  terminadas: { next: null, label: '' },
 };
 
 export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev }: OrderCardProps) {

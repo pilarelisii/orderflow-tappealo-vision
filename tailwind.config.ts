@@ -67,6 +67,7 @@ export default {
           preparacion: "hsl(var(--column-preparacion))",
           retirar: "hsl(var(--column-retirar))",
           enviar: "hsl(var(--column-enviar))",
+          terminadas: "hsl(var(--column-terminadas))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

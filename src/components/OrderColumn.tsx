@@ -17,6 +17,7 @@ const columnStyles: Record<OrderStatus, string> = {
   preparacion: 'border-t-column-preparacion',
   retirar: 'border-t-column-retirar',
   enviar: 'border-t-column-enviar',
+  terminadas: 'border-t-column-terminadas',
 };
 
 const badgeStyles: Record<OrderStatus, string> = {
@@ -24,6 +25,7 @@ const badgeStyles: Record<OrderStatus, string> = {
   preparacion: 'bg-column-preparacion',
   retirar: 'bg-column-retirar',
   enviar: 'bg-column-enviar',
+  terminadas: 'bg-column-terminadas',
 };
 
 export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, canMoveNext, canMovePrev }: OrderColumnProps) {
