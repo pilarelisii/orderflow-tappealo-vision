@@ -9,9 +9,10 @@ const columns: { title: string; status: OrderStatus }[] = [
   { title: "En Preparación", status: "preparacion" },
   { title: "Para Retirar", status: "retirar" },
   { title: "Para Enviar", status: "enviar" },
+  { title: "Terminadas", status: "terminadas" },
 ];
 
-const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar'];
+const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar', 'terminadas'];
 
 const Index = () => {
   const { loading, getOrdersByStatus, updateOrderStatus } = useOrders();

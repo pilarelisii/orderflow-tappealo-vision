@@ -4,7 +4,7 @@ export interface OrderItem {
   descripcion: string;
 }
 
-export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'enviar';
+export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'enviar' | 'terminadas';
 
 export interface Order {
   id: string;

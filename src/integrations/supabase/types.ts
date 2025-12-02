@@ -55,7 +55,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      order_status: "entrante" | "preparacion" | "retirar" | "enviar"
+      order_status:
+        | "entrante"
+        | "preparacion"
+        | "retirar"
+        | "enviar"
+        | "terminadas"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -183,7 +188,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      order_status: ["entrante", "preparacion", "retirar", "enviar"],
+      order_status: [
+        "entrante",
+        "preparacion",
+        "retirar",
+        "enviar",
+        "terminadas",
+      ],
     },
   },
 } as const
