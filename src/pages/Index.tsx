@@ -10,20 +10,22 @@ const columns: { title: string; status: OrderStatus }[] = [
   { title: "Para Enviar", status: "enviar" },
 ];
 
-const statusFlow: Record<OrderStatus, OrderStatus | null> = {
-  entrante: 'preparacion',
-  preparacion: 'retirar',
-  retirar: 'enviar',
-  enviar: null,
-};
+const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar'];
 
 const Index = () => {
   const { loading, getOrdersByStatus, updateOrderStatus } = useOrders();
 
   const handleMoveNext = (order: Order) => {
-    const nextStatus = statusFlow[order.status];
-    if (nextStatus) {
-      updateOrderStatus(order, nextStatus);
+    const currentIndex = statusFlow.indexOf(order.status);
+    if (currentIndex < statusFlow.length - 1) {
+      updateOrderStatus(order, statusFlow[currentIndex + 1]);
+    }
+  };
+
+  const handleMovePrev = (order: Order) => {
+    const currentIndex = statusFlow.indexOf(order.status);
+    if (currentIndex > 0) {
+      updateOrderStatus(order, statusFlow[currentIndex - 1]);
     }
   };
 
@@ -53,13 +55,16 @@ const Index = () => {
       {/* Columns */}
       <main className="p-6">
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {columns.map(({ title, status }) => (
+          {columns.map(({ title, status }, index) => (
             <OrderColumn
               key={status}
               title={title}
               status={status}
               orders={getOrdersByStatus(status)}
               onMoveNext={handleMoveNext}
+              onMovePrev={handleMovePrev}
+              canMoveNext={index < columns.length - 1}
+              canMovePrev={index > 0}
             />
           ))}
         </div>
