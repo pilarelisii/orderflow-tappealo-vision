@@ -2,11 +2,13 @@ import { Order, OrderStatus } from "@/types/order";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
+import { PrintableReceipt } from "./PrintableReceipt";
+import { createRoot } from "react-dom/client";
 
 interface OrderCardProps {
   order: Order;
@@ -28,6 +30,143 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
   const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+
+  const handlePrint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Create a hidden iframe for printing
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'absolute';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = 'none';
+    document.body.appendChild(printFrame);
+
+    const printDocument = printFrame.contentDocument || printFrame.contentWindow?.document;
+    if (!printDocument) return;
+
+    printDocument.open();
+    printDocument.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Pedido #${order.id.slice(0, 8).toUpperCase()}</title>
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.3;
+              width: 80mm;
+            }
+            .receipt {
+              width: 80mm;
+              padding: 2mm;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 1px dashed black;
+              padding-bottom: 4mm;
+              margin-bottom: 4mm;
+            }
+            .header h1 {
+              font-size: 16px;
+              font-weight: bold;
+              margin: 0 0 2mm 0;
+            }
+            .header p {
+              margin: 0;
+              font-size: 10px;
+            }
+            .items {
+              border-bottom: 1px dashed black;
+              padding-bottom: 4mm;
+              margin-bottom: 4mm;
+            }
+            .item {
+              margin-bottom: 3mm;
+            }
+            .item-header {
+              font-weight: bold;
+            }
+            .item-desc {
+              font-size: 10px;
+              padding-left: 4mm;
+            }
+            .delivery {
+              margin: 3mm 0;
+              padding: 2mm;
+              border: 1px solid black;
+            }
+            .comments {
+              font-size: 10px;
+              margin: 3mm 0;
+              padding: 2mm;
+              background: #eee;
+            }
+            .total {
+              font-size: 16px;
+              font-weight: bold;
+              text-align: right;
+              margin: 4mm 0;
+              border-top: 1px solid black;
+              padding-top: 2mm;
+            }
+            .footer {
+              text-align: center;
+              font-size: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <div class="header">
+              <h1>LA BICI</h1>
+              <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
+              <p>${new Date(order.created_at).toLocaleString('es-CL')}</p>
+            </div>
+            <div class="items">
+              ${order.items.map(item => `
+                <div class="item">
+                  <div class="item-header">${item.cantidad}x ${item.item}</div>
+                  ${item.descripcion ? `<div class="item-desc">→ ${item.descripcion}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+            <div class="delivery">
+              <strong>Entrega:</strong> ${order.lugar_entrega}
+            </div>
+            ${order.comentarios_generales ? `
+              <div class="comments">
+                <strong>Notas:</strong> ${order.comentarios_generales}
+              </div>
+            ` : ''}
+            <div class="total">
+              TOTAL: $${order.total.toLocaleString('es-CL')}
+            </div>
+            <div class="footer">
+              <p>¡Gracias por tu pedido!</p>
+              <p>- - - - - - - - - -</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printDocument.close();
+
+    printFrame.contentWindow?.focus();
+    printFrame.contentWindow?.print();
+
+    // Remove iframe after printing
+    setTimeout(() => {
+      document.body.removeChild(printFrame);
+    }, 1000);
+  };
   
   const config = statusConfig[order.status];
   const timeAgo = formatDistanceToNow(new Date(order.created_at), { 
@@ -109,7 +248,14 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 <Clock className="w-3.5 h-3.5" />
                 <span>{timeAgo}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handlePrint}
+                  className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+                  title="Imprimir ticket"
+                >
+                  <Printer className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                </button>
                 <span className="text-lg font-bold text-primary">
                   ${order.total.toLocaleString('es-CL')}
                 </span>
