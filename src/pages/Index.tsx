@@ -1,7 +1,8 @@
 import { OrderColumn } from "@/components/OrderColumn";
 import { useOrders } from "@/hooks/useOrders";
 import { Order, OrderStatus } from "@/types/order";
-import { Loader2, Coffee } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import tappealoLogo from "@/assets/tappealo-logo.png";
 
 const columns: { title: string; status: OrderStatus }[] = [
   { title: "Pedido Entrante", status: "entrante" },
@@ -41,19 +42,17 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-            <Coffee className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Comandas</h1>
-            <p className="text-sm text-muted-foreground">Panel de gestión de pedidos</p>
-          </div>
-        </div>
+        <img src={tappealoLogo} alt="Tappealo" className="h-8" />
       </header>
 
+      {/* Subheader */}
+      <div className="px-6 py-4 bg-background">
+        <h1 className="text-2xl font-bold text-foreground">Comandas</h1>
+        <p className="text-muted-foreground">Panel de Gestión de Pedidos</p>
+      </div>
+
       {/* Columns */}
-      <main className="p-6">
+      <main className="px-6 pb-6">
         <div className="flex gap-4 overflow-x-auto pb-4">
           {columns.map(({ title, status }, index) => (
             <OrderColumn
