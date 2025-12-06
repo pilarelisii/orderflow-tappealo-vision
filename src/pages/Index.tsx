@@ -1,9 +1,19 @@
 import { OrderColumn } from "@/components/OrderColumn";
 import { OrderHistory } from "@/components/OrderHistory";
+import { StockManagement } from "@/components/StockManagement";
 import { useOrders } from "@/hooks/useOrders";
 import { Order, OrderStatus } from "@/types/order";
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 const columns: { title: string; status: OrderStatus }[] = [
   { title: "Pedido Entrante", status: "entrante" },
@@ -43,8 +53,29 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card px-6 py-4">
+      <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <img src={tappealoLogo} alt="Tappealo" className="h-12" />
+        
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-lg">
+            <SheetHeader>
+              <SheetTitle>Configuración</SheetTitle>
+            </SheetHeader>
+            <Tabs defaultValue="stock" className="mt-4">
+              <TabsList className="w-full">
+                <TabsTrigger value="stock" className="flex-1">Stock Productos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="stock" className="mt-4">
+                <StockManagement />
+              </TabsContent>
+            </Tabs>
+          </SheetContent>
+        </Sheet>
       </header>
 
       {/* Subheader */}
