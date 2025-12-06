@@ -125,6 +125,11 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
 
       <div className="delivery">
         <strong>Entrega:</strong> {order.lugar_entrega}
+        {order.telefono && (
+          <div style={{ marginTop: '2mm' }}>
+            <strong>Tel:</strong> {order.telefono}
+          </div>
+        )}
       </div>
 
       {order.comentarios_generales && (
