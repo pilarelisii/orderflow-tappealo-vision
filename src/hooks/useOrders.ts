@@ -9,6 +9,7 @@ const mapToOrder = (row: Record<string, unknown>): Order => ({
   items: row.items as Order['items'],
   comentarios_generales: (row.comentarios_generales as string) ?? null,
   lugar_entrega: row.lugar_entrega as string,
+  telefono: (row.telefono as string) ?? null,
   total: row.total as number,
   status: row.status as OrderStatus,
   created_at: row.created_at as string,
