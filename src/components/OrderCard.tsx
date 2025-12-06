@@ -299,11 +299,6 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                       </span>
                       <span className="font-semibold text-foreground">{item.item}</span>
                     </div>
-                    {item.descripcion && (
-                      <p className="text-sm text-muted-foreground mt-1 ml-8">
-                        {item.descripcion}
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>
