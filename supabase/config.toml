@@ -2,3 +2,6 @@ project_id = "ugjpnxlqchirpyrlkuwk"
 
 [functions.create-order]
 verify_jwt = false
+
+[functions.get-products]
+verify_jwt = false

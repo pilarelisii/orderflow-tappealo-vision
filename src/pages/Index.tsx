@@ -12,7 +12,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 
 const columns: { title: string; status: OrderStatus }[] = [
@@ -64,16 +63,11 @@ const Index = () => {
           </SheetTrigger>
           <SheetContent className="w-full sm:max-w-lg">
             <SheetHeader>
-              <SheetTitle>Configuración</SheetTitle>
+              <SheetTitle>Stock de Productos</SheetTitle>
             </SheetHeader>
-            <Tabs defaultValue="stock" className="mt-4">
-              <TabsList className="w-full">
-                <TabsTrigger value="stock" className="flex-1">Stock Productos</TabsTrigger>
-              </TabsList>
-              <TabsContent value="stock" className="mt-4">
-                <StockManagement />
-              </TabsContent>
-            </Tabs>
+            <div className="mt-4">
+              <StockManagement />
+            </div>
           </SheetContent>
         </Sheet>
       </header>
