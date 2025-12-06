@@ -48,6 +48,14 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
             {orders.length}
           </span>
         </div>
+        {status === 'terminadas' && (
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+            <span className="text-sm font-medium text-muted-foreground">Total Facturado Hoy</span>
+            <span className="text-lg font-bold text-foreground">
+              ${orders.reduce((sum, order) => sum + Number(order.total), 0).toLocaleString('es-AR')}
+            </span>
+          </div>
+        )}
       </div>
       
       <div className="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -68,17 +76,6 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
           ))
         )}
       </div>
-
-      {status === 'terminadas' && (
-        <div className="p-4 border-t border-border bg-muted/50">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Total Facturado Hoy</span>
-            <span className="text-lg font-bold text-foreground">
-              ${orders.reduce((sum, order) => sum + Number(order.total), 0).toLocaleString('es-AR')}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
