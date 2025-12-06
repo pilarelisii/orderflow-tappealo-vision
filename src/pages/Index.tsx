@@ -1,4 +1,5 @@
 import { OrderColumn } from "@/components/OrderColumn";
+import { OrderHistory } from "@/components/OrderHistory";
 import { useOrders } from "@/hooks/useOrders";
 import { Order, OrderStatus } from "@/types/order";
 import { Loader2 } from "lucide-react";
@@ -15,7 +16,7 @@ const columns: { title: string; status: OrderStatus }[] = [
 const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar', 'terminadas'];
 
 const Index = () => {
-  const { loading, getOrdersByStatus, updateOrderStatus } = useOrders();
+  const { loading, getOrdersByStatus, getOrdersByDate, getAvailableDates, updateOrderStatus } = useOrders();
 
   const handleMoveNext = (order: Order) => {
     const currentIndex = statusFlow.indexOf(order.status);
@@ -68,6 +69,12 @@ const Index = () => {
             />
           ))}
         </div>
+
+        {/* Order History */}
+        <OrderHistory 
+          availableDates={getAvailableDates()} 
+          getOrdersByDate={getOrdersByDate} 
+        />
       </main>
     </div>
   );

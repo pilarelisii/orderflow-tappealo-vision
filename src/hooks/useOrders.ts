@@ -104,13 +104,60 @@ export function useOrders() {
     };
   }, []);
 
-  const getOrdersByStatus = (status: OrderStatus) => 
-    orders.filter(order => order.status === status);
+  const getOrdersByStatus = (status: OrderStatus) => {
+    const filtered = orders.filter(order => order.status === status);
+    
+    // For "terminadas", only show today's orders
+    if (status === 'terminadas') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return filtered.filter(order => {
+        const orderDate = new Date(order.updated_at);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === today.getTime();
+      });
+    }
+    
+    return filtered;
+  };
+
+  const getOrdersByDate = (date: Date) => {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    return orders.filter(order => {
+      if (order.status !== 'terminadas') return false;
+      const orderDate = new Date(order.updated_at);
+      orderDate.setHours(0, 0, 0, 0);
+      return orderDate.getTime() === targetDate.getTime();
+    });
+  };
+
+  const getAvailableDates = () => {
+    const dates = new Set<string>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    orders
+      .filter(o => o.status === 'terminadas')
+      .forEach(order => {
+        const orderDate = new Date(order.updated_at);
+        orderDate.setHours(0, 0, 0, 0);
+        // Only add past dates (not today)
+        if (orderDate.getTime() < today.getTime()) {
+          dates.add(orderDate.toISOString().split('T')[0]);
+        }
+      });
+    
+    return Array.from(dates).sort((a, b) => b.localeCompare(a));
+  };
 
   return {
     orders,
     loading,
     getOrdersByStatus,
+    getOrdersByDate,
+    getAvailableDates,
     updateOrderStatus,
     refetch: fetchOrders,
   };
