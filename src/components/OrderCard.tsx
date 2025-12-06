@@ -179,7 +179,6 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
 
   const handlers = useSwipeable({
     onSwiping: (e) => {
-      if (isOpen) return;
       const newOffset = e.deltaX;
       // Limit swipe based on direction availability
       if ((newOffset > 0 && !canMoveNext) || (newOffset < 0 && !canMovePrev)) {
@@ -190,16 +189,14 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
       setIsSwiping(true);
     },
     onSwipedLeft: () => {
-      if (isOpen) return;
-      if (canMovePrev && swipeOffset < -60) {
+      if (canMovePrev && swipeOffset < -50) {
         onMovePrev(order);
       }
       setSwipeOffset(0);
       setIsSwiping(false);
     },
     onSwipedRight: () => {
-      if (isOpen) return;
-      if (canMoveNext && swipeOffset > 60) {
+      if (canMoveNext && swipeOffset > 50) {
         onMoveNext(order);
       }
       setSwipeOffset(0);
@@ -211,21 +208,22 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
     },
     trackMouse: true,
     preventScrollOnSwipe: true,
+    delta: 10,
   });
 
   const getSwipeIndicator = () => {
     if (!isSwiping) return null;
-    if (swipeOffset > 30 && canMoveNext) {
+    if (swipeOffset > 25 && canMoveNext) {
       return (
-        <div className="absolute inset-y-0 left-0 w-12 bg-success/20 flex items-center justify-center rounded-l-lg">
-          <ChevronRight className="w-5 h-5 text-success" />
+        <div className="absolute inset-y-0 left-0 w-16 bg-success/30 flex items-center justify-center rounded-l-lg transition-all">
+          <ChevronRight className="w-6 h-6 text-success" />
         </div>
       );
     }
-    if (swipeOffset < -30 && canMovePrev) {
+    if (swipeOffset < -25 && canMovePrev) {
       return (
-        <div className="absolute inset-y-0 right-0 w-12 bg-warning/20 flex items-center justify-center rounded-r-lg">
-          <ChevronLeft className="w-5 h-5 text-warning" />
+        <div className="absolute inset-y-0 right-0 w-16 bg-warning/30 flex items-center justify-center rounded-r-lg transition-all">
+          <ChevronLeft className="w-6 h-6 text-warning" />
         </div>
       );
     }
