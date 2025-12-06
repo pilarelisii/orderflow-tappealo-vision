@@ -16,6 +16,7 @@ interface OrderPayload {
   comentarios_generales?: string
   lugar_entrega: string
   total: number
+  telefono?: string
 }
 
 Deno.serve(async (req) => {
@@ -63,10 +64,11 @@ Deno.serve(async (req) => {
         comentarios_generales: payload.comentarios_generales || null,
         lugar_entrega: payload.lugar_entrega,
         total: payload.total,
+        telefono: payload.telefono || null,
         status: 'entrante'
       })
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Database error:', error)
