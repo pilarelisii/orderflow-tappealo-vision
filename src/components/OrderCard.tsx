@@ -2,7 +2,7 @@ import { Order, OrderStatus } from "@/types/order";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer, Phone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState, useRef } from "react";
@@ -140,6 +140,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
             </div>
             <div class="delivery">
               <strong>Entrega:</strong> ${order.lugar_entrega}
+              ${order.telefono ? `<div style="margin-top: 2mm;"><strong>Tel:</strong> ${order.telefono}</div>` : ''}
             </div>
             ${order.comentarios_generales ? `
               <div class="comments">
@@ -249,6 +250,20 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 <MapPin className="w-5 h-5 text-primary" />
                 <span className="font-semibold text-primary">{order.lugar_entrega}</span>
               </div>
+            )}
+            
+            {/* Phone with WhatsApp link */}
+            {order.telefono && (
+              <a 
+                href={`https://wa.me/${order.telefono.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-2 mb-2 bg-success/10 rounded-md px-2 py-1.5 hover:bg-success/20 transition-colors"
+              >
+                <Phone className="w-4 h-4 text-success" />
+                <span className="font-medium text-success text-sm">{order.telefono}</span>
+              </a>
             )}
             
             <div className="flex items-center justify-between mb-2">
