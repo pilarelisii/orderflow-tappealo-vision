@@ -104,10 +104,18 @@ export function useOrders() {
     };
   }, []);
 
+  const isOrderFromToday = (order: Order) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const orderDate = new Date(order.created_at);
+    orderDate.setHours(0, 0, 0, 0);
+    return orderDate.getTime() === today.getTime();
+  };
+
   const getOrdersByStatus = (status: OrderStatus) => {
     const filtered = orders.filter(order => order.status === status);
     
-    // For "terminadas", only show today's orders
+    // For "terminadas", only show today's completed orders
     if (status === 'terminadas') {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -118,19 +126,33 @@ export function useOrders() {
       });
     }
     
-    return filtered;
+    // For active columns, only show orders created today
+    return filtered.filter(isOrderFromToday);
   };
 
   const getOrdersByDate = (date: Date) => {
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    return orders.filter(order => {
+    // Get terminated orders from that date
+    const terminatedOrders = orders.filter(order => {
       if (order.status !== 'terminadas') return false;
       const orderDate = new Date(order.updated_at);
       orderDate.setHours(0, 0, 0, 0);
       return orderDate.getTime() === targetDate.getTime();
     });
+    
+    // Get non-terminated orders created on that date (old orders stuck in columns)
+    const oldActiveOrders = orders.filter(order => {
+      if (order.status === 'terminadas') return false;
+      const orderDate = new Date(order.created_at);
+      orderDate.setHours(0, 0, 0, 0);
+      return orderDate.getTime() === targetDate.getTime() && orderDate.getTime() < today.getTime();
+    });
+    
+    return [...terminatedOrders, ...oldActiveOrders];
   };
 
   const getAvailableDates = () => {
@@ -138,12 +160,23 @@ export function useOrders() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Add dates from terminated orders
     orders
       .filter(o => o.status === 'terminadas')
       .forEach(order => {
         const orderDate = new Date(order.updated_at);
         orderDate.setHours(0, 0, 0, 0);
-        // Only add past dates (not today)
+        if (orderDate.getTime() < today.getTime()) {
+          dates.add(orderDate.toISOString().split('T')[0]);
+        }
+      });
+    
+    // Add dates from old active orders (stuck in columns from previous days)
+    orders
+      .filter(o => o.status !== 'terminadas')
+      .forEach(order => {
+        const orderDate = new Date(order.created_at);
+        orderDate.setHours(0, 0, 0, 0);
         if (orderDate.getTime() < today.getTime()) {
           dates.add(orderDate.toISOString().split('T')[0]);
         }
