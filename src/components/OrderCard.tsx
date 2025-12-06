@@ -243,6 +243,14 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
       >
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
+            {/* Location first - prominent */}
+            {order.lugar_entrega && (
+              <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
+                <MapPin className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-primary">{order.lugar_entrega}</span>
+              </div>
+            )}
+            
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Clock className="w-3.5 h-3.5" />
@@ -283,11 +291,6 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                     )}
                   </div>
                 ))}
-              </div>
-
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span className="font-medium">{order.lugar_entrega}</span>
               </div>
 
               {order.comentarios_generales && (
