@@ -114,38 +114,23 @@ export function useOrders() {
   const getOrdersByStatus = (status: OrderStatus) => {
     const filtered = orders.filter(order => order.status === status);
     
-    // For "terminadas", only show orders completed in the last 24h
-    if (status === 'terminadas') {
-      const now = new Date();
-      return filtered.filter(order => {
-        const updatedDate = new Date(order.updated_at);
-        const hoursDiff = (now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60);
-        return hoursDiff <= 24;
-      });
-    }
-    
-    // For active columns, only show orders created in the last 24h
+    // All columns only show orders created in the last 24h
     return filtered.filter(isOrderRecent);
   };
 
   const getOrdersByDate = (date: Date) => {
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(targetDate);
-    nextDay.setDate(nextDay.getDate() + 1);
     
-    // Get all orders from that date (terminated by updated_at, others by created_at)
     return orders.filter(order => {
-      const orderDate = order.status === 'terminadas' 
-        ? new Date(order.updated_at) 
-        : new Date(order.created_at);
+      const orderDate = new Date(order.created_at);
       orderDate.setHours(0, 0, 0, 0);
-      return orderDate.getTime() === targetDate.getTime();
-    }).filter(order => {
-      // Only include orders older than 24h
+      
+      // Check if it's from the target date AND older than 24h
+      if (orderDate.getTime() !== targetDate.getTime()) return false;
+      
       const now = new Date();
-      const refDate = new Date(order.status === 'terminadas' ? order.updated_at : order.created_at);
-      const hoursDiff = (now.getTime() - refDate.getTime()) / (1000 * 60 * 60);
+      const hoursDiff = (now.getTime() - new Date(order.created_at).getTime()) / (1000 * 60 * 60);
       return hoursDiff > 24;
     });
   };
@@ -155,12 +140,12 @@ export function useOrders() {
     const now = new Date();
     
     orders.forEach(order => {
-      const refDate = new Date(order.status === 'terminadas' ? order.updated_at : order.created_at);
-      const hoursDiff = (now.getTime() - refDate.getTime()) / (1000 * 60 * 60);
+      const orderDate = new Date(order.created_at);
+      const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
       
       // Only include orders older than 24h
       if (hoursDiff > 24) {
-        const dateStr = refDate.toISOString().split('T')[0];
+        const dateStr = orderDate.toISOString().split('T')[0];
         dates.add(dateStr);
       }
     });
