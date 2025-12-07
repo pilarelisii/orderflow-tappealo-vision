@@ -25,6 +25,7 @@ export type Database = {
           telefono: string | null
           total: number
           updated_at: string
+          venue_id: string
         }
         Insert: {
           comentarios_generales?: string | null
@@ -36,6 +37,7 @@ export type Database = {
           telefono?: string | null
           total: number
           updated_at?: string
+          venue_id: string
         }
         Update: {
           comentarios_generales?: string | null
@@ -47,8 +49,17 @@ export type Database = {
           telefono?: string | null
           total?: number
           updated_at?: string
+          venue_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -60,6 +71,7 @@ export type Database = {
           price: number
           quantity: number | null
           updated_at: string | null
+          venue_id: string
         }
         Insert: {
           category: string
@@ -70,6 +82,7 @@ export type Database = {
           price: number
           quantity?: number | null
           updated_at?: string | null
+          venue_id: string
         }
         Update: {
           category?: string
@@ -80,6 +93,45 @@ export type Database = {
           price?: number
           quantity?: number | null
           updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venues: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          logo_url: string | null
+          name: string
+          slug: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          logo_url?: string | null
+          name: string
+          slug: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          logo_url?: string | null
+          name?: string
+          slug?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -88,7 +140,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_venue_id: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
       order_status:
