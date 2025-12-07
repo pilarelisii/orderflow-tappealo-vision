@@ -232,7 +232,7 @@ export function StockManagement() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[70vh] max-h-[70vh]">
       {/* Header with edit controls */}
       <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
         <h3 className="text-lg font-semibold text-foreground">Stock de Productos</h3>
@@ -274,7 +274,7 @@ export function StockManagement() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 pr-4">
         <Accordion type="multiple" defaultValue={categories} className="w-full">
           {categories.map((category) => (
             <AccordionItem key={category} value={category}>
