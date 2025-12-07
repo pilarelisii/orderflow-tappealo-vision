@@ -1,9 +1,12 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { OrderColumn } from "@/components/OrderColumn";
 import { OrderHistory } from "@/components/OrderHistory";
 import { StockManagement } from "@/components/StockManagement";
 import { useOrders } from "@/hooks/useOrders";
+import { useAuth } from "@/hooks/useAuth";
 import { Order, OrderStatus } from "@/types/order";
-import { Loader2, Settings } from "lucide-react";
+import { Loader2, Settings, LogOut } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import {
   Sheet,
@@ -13,6 +16,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const columns: { title: string; status: OrderStatus }[] = [
   { title: "Pedido Entrante", status: "entrante" },
@@ -25,7 +29,24 @@ const columns: { title: string; status: OrderStatus }[] = [
 const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar', 'terminadas'];
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading, venue, signOut } = useAuth();
   const { loading, getOrdersByStatus, getOrdersByDate, getAvailableDates, updateOrderStatus } = useOrders();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  const handleLogout = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast.error("Error al cerrar sesión");
+    } else {
+      navigate("/login");
+    }
+  };
 
   const handleMoveNext = (order: Order) => {
     const currentIndex = statusFlow.indexOf(order.status);
@@ -41,7 +62,7 @@ const Index = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -49,27 +70,45 @@ const Index = () => {
     );
   }
 
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
-        <img src={tappealoLogo} alt="Tappealo" className="h-12" />
-        
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-lg">
-            <SheetHeader>
-              <SheetTitle>Stock de Productos</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4">
-              <StockManagement />
+        <div className="flex items-center gap-4">
+          <img src={tappealoLogo} alt="Tappealo" className="h-10" />
+          {venue && (
+            <div className="border-l border-border pl-4">
+              <p className="font-semibold text-foreground">{venue.name}</p>
+              <p className="text-xs text-muted-foreground">/{venue.slug}</p>
             </div>
-          </SheetContent>
-        </Sheet>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-lg">
+              <SheetHeader>
+                <SheetTitle>Stock de Productos</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <StockManagement />
+              </div>
+            </SheetContent>
+          </Sheet>
+          
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </header>
 
       {/* Subheader */}

@@ -1,14 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import logoLaBici from "@/assets/logo-la-bici.jpg";
-
-const VALID_EMAIL = "labici@tappealo.com";
-const VALID_PASSWORD = "labici2026";
+import { useAuth } from "@/hooks/useAuth";
+import tappealoLogo from "@/assets/tappealo-logo.png";
+import { Loader2 } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,32 +15,62 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, isAuthenticated, loading: authLoading } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email.trim() || !password.trim()) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa email y contraseña",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
-    setTimeout(() => {
-      if (email === VALID_EMAIL && password === VALID_PASSWORD) {
-        localStorage.setItem("labici_auth", "true");
-        navigate("/");
-      } else {
-        toast({
-          title: "Error",
-          description: "Credenciales incorrectas",
-          variant: "destructive",
-        });
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      let message = "Credenciales incorrectas";
+      if (error.message.includes("Invalid login credentials")) {
+        message = "Email o contraseña incorrectos";
+      } else if (error.message.includes("Email not confirmed")) {
+        message = "Por favor confirma tu email antes de ingresar";
       }
-      setLoading(false);
-    }, 500);
+      
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    }
+    
+    setLoading(false);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="flex flex-col items-center justify-center pb-2">
-          <img src={logoLaBici} alt="La Bici" className="h-32 object-contain" />
-          <p className="text-sm text-muted-foreground mt-2">powered by tappealo</p>
+          <img src={tappealoLogo} alt="Tappealo" className="h-16 object-contain" />
+          <p className="text-sm text-muted-foreground mt-2">Panel de Gestión</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -68,7 +97,14 @@ const Login = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Ingresando..." : "Ingresar"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Ingresando...
+                </>
+              ) : (
+                "Ingresar"
+              )}
             </Button>
           </form>
         </CardContent>
