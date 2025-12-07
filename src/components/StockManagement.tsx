@@ -29,17 +29,7 @@ interface EditedProduct {
   price: number;
 }
 
-const categories = ["blacks", "frios", "whites", "dulces", "salados", "otras", "bebidas"];
-
-const categoryLabels: Record<string, string> = {
-  blacks: "Blacks",
-  frios: "Fríos",
-  whites: "Whites",
-  dulces: "Dulces",
-  salados: "Salados",
-  otras: "Otras",
-  bebidas: "Bebidas",
-};
+// Categories will be derived dynamically from products
 
 export function StockManagement() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -53,9 +43,33 @@ export function StockManagement() {
   }, []);
 
   const fetchProducts = async () => {
+    // Get current user's venue
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No user logged in');
+      setLoading(false);
+      return;
+    }
+
+    // Get venue for this user
+    const { data: venue, error: venueError } = await supabase
+      .from('venues')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (venueError || !venue) {
+      console.error('Error fetching venue:', venueError);
+      toast.error('Error al cargar venue');
+      setLoading(false);
+      return;
+    }
+
+    // Fetch products for this venue only
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .eq('venue_id', venue.id)
       .order('category')
       .order('id');
 
@@ -220,8 +234,11 @@ export function StockManagement() {
   };
 
   const getProductsByCategory = (category: string) => {
-    return products.filter((p) => p.category === category);
+    return products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
   };
+
+  // Get unique categories from actual products
+  const categories = [...new Set(products.map(p => p.category))].sort();
 
   if (loading) {
     return (
@@ -279,7 +296,7 @@ export function StockManagement() {
           {categories.map((category) => (
             <AccordionItem key={category} value={category}>
               <AccordionTrigger className="text-base font-semibold px-1">
-                {categoryLabels[category]} ({getProductsByCategory(category).length})
+                {category} ({getProductsByCategory(category).length})
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3">
