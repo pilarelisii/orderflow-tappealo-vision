@@ -104,83 +104,66 @@ export function useOrders() {
     };
   }, []);
 
-  const isOrderFromToday = (order: Order) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const isOrderRecent = (order: Order) => {
+    const now = new Date();
     const orderDate = new Date(order.created_at);
-    orderDate.setHours(0, 0, 0, 0);
-    return orderDate.getTime() === today.getTime();
+    const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    return hoursDiff <= 24;
   };
 
   const getOrdersByStatus = (status: OrderStatus) => {
     const filtered = orders.filter(order => order.status === status);
     
-    // For "terminadas", only show today's completed orders
+    // For "terminadas", only show orders completed in the last 24h
     if (status === 'terminadas') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
       return filtered.filter(order => {
-        const orderDate = new Date(order.updated_at);
-        orderDate.setHours(0, 0, 0, 0);
-        return orderDate.getTime() === today.getTime();
+        const updatedDate = new Date(order.updated_at);
+        const hoursDiff = (now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60);
+        return hoursDiff <= 24;
       });
     }
     
-    // For active columns, only show orders created today
-    return filtered.filter(isOrderFromToday);
+    // For active columns, only show orders created in the last 24h
+    return filtered.filter(isOrderRecent);
   };
 
   const getOrdersByDate = (date: Date) => {
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
     
-    // Get terminated orders from that date
-    const terminatedOrders = orders.filter(order => {
-      if (order.status !== 'terminadas') return false;
-      const orderDate = new Date(order.updated_at);
+    // Get all orders from that date (terminated by updated_at, others by created_at)
+    return orders.filter(order => {
+      const orderDate = order.status === 'terminadas' 
+        ? new Date(order.updated_at) 
+        : new Date(order.created_at);
       orderDate.setHours(0, 0, 0, 0);
       return orderDate.getTime() === targetDate.getTime();
+    }).filter(order => {
+      // Only include orders older than 24h
+      const now = new Date();
+      const refDate = new Date(order.status === 'terminadas' ? order.updated_at : order.created_at);
+      const hoursDiff = (now.getTime() - refDate.getTime()) / (1000 * 60 * 60);
+      return hoursDiff > 24;
     });
-    
-    // Get non-terminated orders created on that date (old orders stuck in columns)
-    const oldActiveOrders = orders.filter(order => {
-      if (order.status === 'terminadas') return false;
-      const orderDate = new Date(order.created_at);
-      orderDate.setHours(0, 0, 0, 0);
-      return orderDate.getTime() === targetDate.getTime() && orderDate.getTime() < today.getTime();
-    });
-    
-    return [...terminatedOrders, ...oldActiveOrders];
   };
 
   const getAvailableDates = () => {
     const dates = new Set<string>();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
     
-    // Add dates from terminated orders
-    orders
-      .filter(o => o.status === 'terminadas')
-      .forEach(order => {
-        const orderDate = new Date(order.updated_at);
-        orderDate.setHours(0, 0, 0, 0);
-        if (orderDate.getTime() < today.getTime()) {
-          dates.add(orderDate.toISOString().split('T')[0]);
-        }
-      });
-    
-    // Add dates from old active orders (stuck in columns from previous days)
-    orders
-      .filter(o => o.status !== 'terminadas')
-      .forEach(order => {
-        const orderDate = new Date(order.created_at);
-        orderDate.setHours(0, 0, 0, 0);
-        if (orderDate.getTime() < today.getTime()) {
-          dates.add(orderDate.toISOString().split('T')[0]);
-        }
-      });
+    orders.forEach(order => {
+      const refDate = new Date(order.status === 'terminadas' ? order.updated_at : order.created_at);
+      const hoursDiff = (now.getTime() - refDate.getTime()) / (1000 * 60 * 60);
+      
+      // Only include orders older than 24h
+      if (hoursDiff > 24) {
+        const dateStr = refDate.toISOString().split('T')[0];
+        dates.add(dateStr);
+      }
+    });
     
     return Array.from(dates).sort((a, b) => b.localeCompare(a));
   };
