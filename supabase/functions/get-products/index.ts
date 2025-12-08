@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     // Fetch products for this venue
     const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, name, description, price, category, enabled, quantity')
+      .select('id, name, description, price, category, enabled, quantity, image_url')
       .eq('venue_id', venue.id)
       .order('category')
       .order('id');

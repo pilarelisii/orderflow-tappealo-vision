@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Pencil, Save, X } from "lucide-react";
+import { Loader2, Pencil, Save, X, Upload, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -21,12 +21,16 @@ interface Product {
   category: string;
   enabled: boolean;
   quantity: number;
+  image_url: string | null;
+  venue_id: string;
 }
 
 interface EditedProduct {
   name: string;
   description: string;
   price: number;
+  imageFile: File | null;
+  imagePreview: string | null;
 }
 
 // Categories will be derived dynamically from products
@@ -132,10 +136,33 @@ export function StockManagement() {
         name: product.name,
         description: product.description || '',
         price: product.price,
+        imageFile: null,
+        imagePreview: product.image_url,
       };
     });
     setEditedProducts(initialEdits);
     setIsEditMode(true);
+  };
+
+  const handleImageSelect = (productId: number, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten archivos de imagen');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 5MB');
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setEditedProducts(prev => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        imageFile: file,
+        imagePreview: previewUrl,
+      },
+    }));
   };
 
   const cancelEdit = () => {
@@ -160,7 +187,8 @@ export function StockManagement() {
       return (
         edited.name !== product.name ||
         edited.description !== (product.description || '') ||
-        edited.price !== product.price
+        edited.price !== product.price ||
+        edited.imageFile !== null
       );
     });
 
@@ -196,12 +224,37 @@ export function StockManagement() {
     try {
       for (const product of changedProducts) {
         const edited = editedProducts[product.id];
+        let imageUrl = product.image_url;
+
+        // Upload image if there's a new one
+        if (edited.imageFile) {
+          const fileExt = edited.imageFile.name.split('.').pop();
+          const fileName = `${product.venue_id}/${product.id}-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, edited.imageFile, { upsert: true });
+
+          if (uploadError) {
+            console.error('Error uploading image:', uploadError);
+            toast.error('Error al subir imagen');
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+          
+          imageUrl = urlData.publicUrl;
+        }
+
         const { error } = await supabase
           .from('products')
           .update({
             name: edited.name.trim(),
             description: edited.description.trim() || null,
             price: edited.price,
+            image_url: imageUrl,
           })
           .eq('id', product.id);
 
@@ -217,6 +270,7 @@ export function StockManagement() {
             name: edited.name.trim(),
             description: edited.description.trim() || null,
             price: edited.price,
+            image_url: edited.imagePreview || p.image_url,
           };
         }
         return p;
@@ -312,6 +366,47 @@ export function StockManagement() {
                         onCheckedChange={() => toggleProduct(product.id, product.enabled)}
                         disabled={isEditMode}
                       />
+                      
+                      {/* Product image */}
+                      <div className="flex-shrink-0">
+                        {isEditMode ? (
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleImageSelect(product.id, file);
+                              }}
+                            />
+                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-primary/50 flex items-center justify-center overflow-hidden bg-muted hover:bg-muted/80 transition-colors">
+                              {editedProducts[product.id]?.imagePreview ? (
+                                <img
+                                  src={editedProducts[product.id].imagePreview!}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Upload className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                          </label>
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                            {product.image_url ? (
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex-1 min-w-0">
                         {isEditMode ? (
                           <div className="space-y-2">
