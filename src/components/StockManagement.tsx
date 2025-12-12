@@ -10,7 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Pencil, Save, X, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -303,7 +303,7 @@ export function StockManagement() {
   }
 
   return (
-    <div className="flex flex-col h-[70vh] max-h-[70vh]">
+    <div className="flex flex-col">
       {/* Header with edit controls */}
       <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
         <h3 className="text-lg font-semibold text-foreground">Stock de Productos</h3>
@@ -333,19 +333,28 @@ export function StockManagement() {
               </Button>
             </>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={enterEditMode}
-            >
-              <Pencil className="h-4 w-4 mr-1" />
-              Editar
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={enterEditMode}
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Editar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => toast.info('Funcionalidad próximamente')}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Agregar
+              </Button>
+            </>
           )}
         </div>
       </div>
 
-      <ScrollArea className="flex-1 pr-4">
+      <div className="pr-4">
         <Accordion type="multiple" defaultValue={categories} className="w-full">
           {categories.map((category) => (
             <AccordionItem key={category} value={category}>
@@ -465,7 +474,7 @@ export function StockManagement() {
             </AccordionItem>
           ))}
         </Accordion>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
