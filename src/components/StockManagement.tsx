@@ -1,14 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -33,7 +46,27 @@ interface EditedProduct {
   imagePreview: string | null;
 }
 
-// Categories will be derived dynamically from products
+interface NewProduct {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  newCategory: string;
+  quantity: number;
+  imageFile: File | null;
+  imagePreview: string | null;
+}
+
+const initialNewProduct: NewProduct = {
+  name: '',
+  description: '',
+  price: 0,
+  category: '',
+  newCategory: '',
+  quantity: 0,
+  imageFile: null,
+  imagePreview: null,
+};
 
 export function StockManagement() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -41,13 +74,16 @@ export function StockManagement() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedProducts, setEditedProducts] = useState<Record<number, EditedProduct>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState<NewProduct>(initialNewProduct);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [venueId, setVenueId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
   const fetchProducts = async () => {
-    // Get current user's venue
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       console.error('No user logged in');
@@ -55,7 +91,6 @@ export function StockManagement() {
       return;
     }
 
-    // Get venue for this user
     const { data: venue, error: venueError } = await supabase
       .from('venues')
       .select('id')
@@ -69,7 +104,8 @@ export function StockManagement() {
       return;
     }
 
-    // Fetch products for this venue only
+    setVenueId(venue.id);
+
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -287,11 +323,108 @@ export function StockManagement() {
     }
   };
 
+  const handleNewProductImageSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten archivos de imagen');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 5MB');
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setNewProduct(prev => ({ ...prev, imageFile: file, imagePreview: previewUrl }));
+  };
+
+  const addProduct = async () => {
+    const categoryToUse = newProduct.category === '__new__' ? newProduct.newCategory.trim() : newProduct.category;
+    
+    if (!newProduct.name.trim()) {
+      toast.error('El nombre es requerido');
+      return;
+    }
+    if (newProduct.name.length > 100) {
+      toast.error('El nombre no puede tener más de 100 caracteres');
+      return;
+    }
+    if (!categoryToUse) {
+      toast.error('La categoría es requerida');
+      return;
+    }
+    if (newProduct.price <= 0) {
+      toast.error('El precio debe ser mayor a 0');
+      return;
+    }
+    if (!venueId) {
+      toast.error('Error: venue no encontrado');
+      return;
+    }
+
+    setIsAddingProduct(true);
+
+    try {
+      // Get max ID for this venue to generate new ID
+      const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
+      const newId = maxId + 1;
+
+      let imageUrl: string | null = null;
+
+      if (newProduct.imageFile) {
+        const fileExt = newProduct.imageFile.name.split('.').pop();
+        const fileName = `${venueId}/${newId}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, newProduct.imageFile, { upsert: true });
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          toast.error('Error al subir imagen');
+          setIsAddingProduct(false);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+        
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert({
+          id: newId,
+          name: newProduct.name.trim(),
+          description: newProduct.description.trim() || null,
+          price: newProduct.price,
+          category: categoryToUse.toUpperCase(),
+          quantity: newProduct.quantity,
+          enabled: true,
+          venue_id: venueId,
+          image_url: imageUrl,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProducts(prev => [...prev, data].sort((a, b) => a.category.localeCompare(b.category) || a.id - b.id));
+      setNewProduct(initialNewProduct);
+      setIsAddDialogOpen(false);
+      toast.success('Producto agregado');
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast.error('Error al agregar producto');
+    } finally {
+      setIsAddingProduct(false);
+    }
+  };
+
   const getProductsByCategory = (category: string) => {
     return products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
   };
 
-  // Get unique categories from actual products
   const categories = [...new Set(products.map(p => p.category))].sort();
 
   if (loading) {
@@ -344,7 +477,7 @@ export function StockManagement() {
               </Button>
               <Button
                 size="sm"
-                onClick={() => toast.info('Funcionalidad próximamente')}
+                onClick={() => setIsAddDialogOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar
@@ -475,6 +608,139 @@ export function StockManagement() {
           ))}
         </Accordion>
       </div>
+
+      {/* Add Product Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Producto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-name">Nombre *</Label>
+              <Input
+                id="new-name"
+                value={newProduct.name}
+                onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Nombre del producto"
+                maxLength={100}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-description">Descripción</Label>
+              <Input
+                id="new-description"
+                value={newProduct.description}
+                onChange={(e) => setNewProduct(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Descripción (opcional)"
+                maxLength={200}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-price">Precio *</Label>
+                <Input
+                  id="new-price"
+                  type="number"
+                  value={newProduct.price || ''}
+                  onChange={(e) => setNewProduct(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0"
+                  min={0}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-quantity">Cantidad inicial</Label>
+                <Input
+                  id="new-quantity"
+                  type="number"
+                  value={newProduct.quantity}
+                  onChange={(e) => setNewProduct(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                  min={0}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Categoría *</Label>
+              <Select
+                value={newProduct.category}
+                onValueChange={(value) => setNewProduct(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ Nueva categoría</SelectItem>
+                </SelectContent>
+              </Select>
+              {newProduct.category === '__new__' && (
+                <Input
+                  value={newProduct.newCategory}
+                  onChange={(e) => setNewProduct(prev => ({ ...prev, newCategory: e.target.value }))}
+                  placeholder="Nombre de la nueva categoría"
+                  className="mt-2"
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Imagen</Label>
+              <label className="cursor-pointer block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleNewProductImageSelect(file);
+                  }}
+                />
+                <div className="w-full h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted hover:bg-muted/80 transition-colors">
+                  {newProduct.imagePreview ? (
+                    <img
+                      src={newProduct.imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mt-2">Click para subir imagen</p>
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNewProduct(initialNewProduct);
+                  setIsAddDialogOpen(false);
+                }}
+                disabled={isAddingProduct}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={addProduct} disabled={isAddingProduct}>
+                {isAddingProduct ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-1" />
+                )}
+                Agregar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
