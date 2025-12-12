@@ -1,20 +1,12 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { OrderColumn } from "@/components/OrderColumn";
 import { OrderHistory } from "@/components/OrderHistory";
-import { StockManagement } from "@/components/StockManagement";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 import { Order, OrderStatus } from "@/types/order";
 import { Loader2, Settings, LogOut } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -89,21 +81,11 @@ const Index = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-lg">
-              <SheetHeader>
-                <SheetTitle>Stock de Productos</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4">
-                <StockManagement />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/stock">
+              <Settings className="h-5 w-5" />
+            </Link>
+          </Button>
           
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
