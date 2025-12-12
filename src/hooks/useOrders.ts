@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderStatus } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
-
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 // Helper to map DB row to Order type
 const mapToOrder = (row: Record<string, unknown>): Order => ({
   id: row.id as string,
@@ -20,7 +20,7 @@ export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
+  const { playNotificationSound } = useNotificationSound();
   const fetchOrders = async () => {
     const { data, error } = await supabase
       .from('orders')
@@ -82,8 +82,12 @@ export function useOrders() {
           if (payload.eventType === 'INSERT') {
             const newOrder = mapToOrder(payload.new as Record<string, unknown>);
             setOrders(prev => [newOrder, ...prev]);
+            
+            // Play notification sound for new orders
+            playNotificationSound();
+            
             toast({
-              title: "Nuevo pedido",
+              title: "🔔 Nuevo pedido",
               description: `Pedido recibido: ${newOrder.lugar_entrega}`,
             });
           } else if (payload.eventType === 'UPDATE') {
