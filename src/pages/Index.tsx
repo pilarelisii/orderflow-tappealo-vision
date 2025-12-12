@@ -1,14 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { OrderColumn } from "@/components/OrderColumn";
 import { OrderHistory } from "@/components/OrderHistory";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 import { Order, OrderStatus } from "@/types/order";
-import { Loader2, Settings, LogOut } from "lucide-react";
+import { Loader2, Settings, LogOut, Package, ChevronRight } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const columns: { title: string; status: OrderStatus }[] = [
   { title: "Pedido Entrante", status: "entrante" },
@@ -81,11 +88,30 @@ const Index = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/stock">
-              <Settings className="h-5 w-5" />
-            </Link>
-          </Button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72">
+              <SheetHeader>
+                <SheetTitle>Configuración</SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 flex flex-col gap-2">
+                <Link
+                  to="/stock"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Stock de Productos</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              </nav>
+            </SheetContent>
+          </Sheet>
           
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
