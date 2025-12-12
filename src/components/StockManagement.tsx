@@ -23,8 +23,18 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus } from "lucide-react";
+import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Product {
   id: number;
@@ -78,6 +88,7 @@ export function StockManagement() {
   const [newProduct, setNewProduct] = useState<NewProduct>(initialNewProduct);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [venueId, setVenueId] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -421,6 +432,27 @@ export function StockManagement() {
     }
   };
 
+  const deleteProduct = async () => {
+    if (!productToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productToDelete.id);
+
+      if (error) throw error;
+
+      setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+      toast.success('Producto eliminado');
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Error al eliminar producto');
+    } finally {
+      setProductToDelete(null);
+    }
+  };
+
   const getProductsByCategory = (category: string) => {
     return products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
   };
@@ -600,6 +632,16 @@ export function StockManagement() {
                           disabled={!product.enabled || isEditMode}
                         />
                       </div>
+                      {isEditMode && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setProductToDelete(product)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -741,6 +783,27 @@ export function StockManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente "{productToDelete?.name}". Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteProduct}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
