@@ -115,6 +115,7 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          service_active: boolean
           slug: string
           user_id: string | null
         }
@@ -124,6 +125,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          service_active?: boolean
           slug: string
           user_id?: string | null
         }
@@ -133,6 +135,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          service_active?: boolean
           slug?: string
           user_id?: string | null
         }

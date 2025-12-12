@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     // First get the venue by slug
     const { data: venue, error: venueError } = await supabase
       .from('venues')
-      .select('id, name, enabled')
+      .select('id, name, enabled, service_active')
       .eq('slug', venueSlug)
       .eq('enabled', true)
       .maybeSingle();
@@ -52,6 +52,22 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Venue not found or disabled' }),
         { 
           status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check if service is active
+    if (!venue.service_active) {
+      console.log(`Service disabled for venue: ${venue.name}`);
+      return new Response(
+        JSON.stringify({ 
+          venue: { id: venue.id, name: venue.name },
+          service: 'disabled',
+          message: 'El local está cerrado, no se pueden realizar pedidos',
+          products: []
+        }),
+        { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -77,6 +93,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         venue: { id: venue.id, name: venue.name },
+        service: 'enabled',
         products 
       }),
       { 
