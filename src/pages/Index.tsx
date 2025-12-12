@@ -148,6 +148,7 @@ const Index = () => {
               onMovePrev={handleMovePrev}
               canMoveNext={index < columns.length - 1}
               canMovePrev={index > 0}
+              venueName={venue?.name}
             />
           ))}
         </div>

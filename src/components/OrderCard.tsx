@@ -16,6 +16,7 @@ interface OrderCardProps {
   onMovePrev: (order: Order) => void;
   canMoveNext: boolean;
   canMovePrev: boolean;
+  venueName?: string;
 }
 
 const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: string }> = {
@@ -26,7 +27,7 @@ const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: strin
   terminadas: { next: null, label: '' },
 };
 
-export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev }: OrderCardProps) {
+export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
@@ -126,7 +127,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
         <body>
           <div class="receipt">
             <div class="header">
-              <h1>LA BICI</h1>
+              <h1>${venueName?.toUpperCase() || 'PEDIDO'}</h1>
               <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
               <p>${new Date(order.created_at).toLocaleString('es-CL')}</p>
             </div>
@@ -141,6 +142,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
             <div class="delivery">
               <strong>Entrega:</strong> ${order.lugar_entrega}
               ${order.telefono ? `<div style="margin-top: 2mm;"><strong>Tel:</strong> ${order.telefono}</div>` : ''}
+              ${order.nombre ? `<div style="margin-top: 2mm;"><strong>Nombre:</strong> ${order.nombre}</div>` : ''}
             </div>
             ${order.comentarios_generales ? `
               <div class="comments">
@@ -262,6 +264,13 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 <Phone className="w-4 h-4 text-success" />
                 <span className="font-medium text-success text-sm">{order.telefono}</span>
               </a>
+            )}
+            
+            {/* Customer name */}
+            {order.nombre && (
+              <div className="flex items-center gap-2 mb-2 bg-secondary rounded-md px-2 py-1.5">
+                <span className="font-medium text-foreground text-sm">{order.nombre}</span>
+              </div>
             )}
             
             <div className="flex items-center justify-between mb-2">

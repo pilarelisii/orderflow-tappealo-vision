@@ -18,6 +18,7 @@ interface OrderPayload {
   lugar_entrega: string
   total: number
   telefono?: string
+  nombre?: string
 }
 
 Deno.serve(async (req) => {
@@ -101,6 +102,7 @@ Deno.serve(async (req) => {
         lugar_entrega: payload.lugar_entrega,
         total: payload.total,
         telefono: payload.telefono || null,
+        nombre: payload.nombre || null,
         status: 'entrante'
       })
       .select()
