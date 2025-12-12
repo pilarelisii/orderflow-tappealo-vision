@@ -10,6 +10,7 @@ interface OrderColumnProps {
   onMovePrev: (order: Order) => void;
   canMoveNext: boolean;
   canMovePrev: boolean;
+  venueName?: string;
 }
 
 const columnStyles: Record<OrderStatus, string> = {
@@ -28,7 +29,7 @@ const badgeStyles: Record<OrderStatus, string> = {
   terminadas: 'bg-column-terminadas',
 };
 
-export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, canMoveNext, canMovePrev }: OrderColumnProps) {
+export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderColumnProps) {
   return (
     <div 
       className={cn(
@@ -72,6 +73,7 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
               onMovePrev={onMovePrev}
               canMoveNext={canMoveNext}
               canMovePrev={canMovePrev}
+              venueName={venueName}
             />
           ))
         )}
