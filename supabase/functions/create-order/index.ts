@@ -19,6 +19,7 @@ interface OrderPayload {
   total: number
   telefono?: string
   nombre?: string
+  paymentMethod?: string // efectivo or mercado pago
 }
 
 Deno.serve(async (req) => {
@@ -103,6 +104,7 @@ Deno.serve(async (req) => {
         total: payload.total,
         telefono: payload.telefono || null,
         nombre: payload.nombre || null,
+        payment_method: payload.paymentMethod || null,
         status: 'entrante'
       })
       .select()

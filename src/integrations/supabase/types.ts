@@ -22,6 +22,7 @@ export type Database = {
           items: Json
           lugar_entrega: string | null
           nombre: string | null
+          payment_method: string | null
           status: Database["public"]["Enums"]["order_status"]
           telefono: string | null
           total: number
@@ -35,6 +36,7 @@ export type Database = {
           items: Json
           lugar_entrega?: string | null
           nombre?: string | null
+          payment_method?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           telefono?: string | null
           total: number
@@ -48,6 +50,7 @@ export type Database = {
           items?: Json
           lugar_entrega?: string | null
           nombre?: string | null
+          payment_method?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           telefono?: string | null
           total?: number

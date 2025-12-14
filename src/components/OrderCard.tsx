@@ -2,7 +2,7 @@ import { Order, OrderStatus } from "@/types/order";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer, Phone } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer, Phone, CreditCard, Banknote } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState, useRef } from "react";
@@ -143,6 +143,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
               <strong>Entrega:</strong> ${order.lugar_entrega}
               ${order.telefono ? `<div style="margin-top: 2mm;"><strong>Tel:</strong> ${order.telefono}</div>` : ''}
               ${order.nombre ? `<div style="margin-top: 2mm;"><strong>Nombre:</strong> ${order.nombre}</div>` : ''}
+              ${order.payment_method ? `<div style="margin-top: 2mm;"><strong>Pago:</strong> ${order.payment_method}</div>` : ''}
             </div>
             ${order.comentarios_generales ? `
               <div class="comments">
@@ -270,6 +271,18 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
             {order.nombre && (
               <div className="flex items-center gap-2 mb-2 bg-secondary rounded-md px-2 py-1.5">
                 <span className="font-medium text-foreground text-sm">{order.nombre}</span>
+              </div>
+            )}
+            
+            {/* Payment method */}
+            {order.payment_method && (
+              <div className="flex items-center gap-2 mb-2 bg-accent/50 rounded-md px-2 py-1.5">
+                {order.payment_method.toLowerCase().includes('mercado') ? (
+                  <CreditCard className="w-4 h-4 text-blue-500" />
+                ) : (
+                  <Banknote className="w-4 h-4 text-green-600" />
+                )}
+                <span className="font-medium text-foreground text-sm capitalize">{order.payment_method}</span>
               </div>
             )}
             

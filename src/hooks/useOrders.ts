@@ -11,6 +11,7 @@ const mapToOrder = (row: Record<string, unknown>): Order => ({
   lugar_entrega: row.lugar_entrega as string,
   telefono: (row.telefono as string) ?? null,
   nombre: (row.nombre as string) ?? null,
+  payment_method: (row.payment_method as string) ?? null,
   total: row.total as number,
   status: row.status as OrderStatus,
   created_at: row.created_at as string,
