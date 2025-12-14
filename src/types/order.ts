@@ -13,6 +13,7 @@ export interface Order {
   lugar_entrega: string;
   telefono: string | null;
   nombre: string | null;
+  payment_method: string | null;
   total: number;
   status: OrderStatus;
   created_at: string;
