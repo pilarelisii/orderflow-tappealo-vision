@@ -129,7 +129,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
             <div class="header">
               <h1>${venueName?.toUpperCase() || 'PEDIDO'}</h1>
               <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
-              <p>${new Date(order.created_at).toLocaleString('es-CL')}</p>
+              <p>${new Date(order.createdAt).toLocaleString('es-CL')}</p>
             </div>
             <div class="items">
               ${order.items.map(item => `
@@ -140,13 +140,13 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
               `).join('')}
             </div>
             <div class="delivery">
-              <strong>Entrega:</strong> ${order.lugar_entrega}
+              <strong>Entrega:</strong> ${order.lugarEntrega}
               ${order.telefono ? `<div style="margin-top: 2mm;"><strong>Tel:</strong> ${order.telefono}</div>` : ''}
               ${order.nombre ? `<div style="margin-top: 2mm;"><strong>Nombre:</strong> ${order.nombre}</div>` : ''}
             </div>
-            ${order.comentarios_generales ? `
+            ${order.comentariosGenerales ? `
               <div class="comments">
-                <strong>Notas:</strong> ${order.comentarios_generales}
+                <strong>Notas:</strong> ${order.comentariosGenerales}
               </div>
             ` : ''}
             <div class="total">
@@ -172,7 +172,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
   };
   
   const config = statusConfig[order.status];
-  const timeAgo = formatDistanceToNow(new Date(order.created_at), { 
+  const timeAgo = formatDistanceToNow(new Date(order.createdAt), { 
     addSuffix: true, 
     locale: es 
   });
@@ -245,10 +245,10 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
             {/* Location first - prominent */}
-            {order.lugar_entrega && (
+            {order.lugarEntrega && (
               <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
                 <MapPin className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-primary">{order.lugar_entrega}</span>
+                <span className="font-semibold text-primary">{order.lugarEntrega}</span>
               </div>
             )}
             
@@ -310,10 +310,10 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 ))}
               </div>
 
-              {order.comentarios_generales && (
+              {order.comentariosGenerales && (
                 <div className="flex items-start gap-2 text-sm bg-accent/50 p-2.5 rounded-lg">
                   <MessageSquare className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                  <span className="text-foreground">{order.comentarios_generales}</span>
+                  <span className="text-foreground">{order.comentariosGenerales}</span>
                 </div>
               )}
 

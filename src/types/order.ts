@@ -9,13 +9,13 @@ export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'enviar' | 't
 export interface Order {
   id: string;
   items: OrderItem[];
-  comentarios_generales: string | null;
-  lugar_entrega: string;
+  comentariosGenerales: string | null;
+  lugarEntrega: string;
   telefono: string | null;
   nombre: string | null;
   total: number;
   status: OrderStatus;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   venue_name?: string;
 }
