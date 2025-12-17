@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, QrCode, Plus, Copy, Check, Trash2, Download } from "lucide-react";
+import { Loader2, ArrowLeft, QrCode, Plus, Copy, Check, Trash2, Download, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,10 @@ const QRSettings = () => {
   const [newQRDeliveryType, setNewQRDeliveryType] = useState("en_lugar");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addingQR, setAddingQR] = useState(false);
+  const [editingQR, setEditingQR] = useState<QRLocation | null>(null);
+  const [editQRCode, setEditQRCode] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -256,6 +260,46 @@ const QRSettings = () => {
     }
   };
 
+  const openEditDialog = (qr: QRLocation) => {
+    setEditingQR(qr);
+    setEditQRCode(qr.code);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditQR = async () => {
+    if (!editingQR || !editQRCode.trim()) return;
+    
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('qr_locations')
+        .update({ code: editQRCode.trim().toLowerCase() })
+        .eq('id', editingQR.id);
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Ya existe un QR con ese código');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      setQrLocations(prev => 
+        prev.map(qr => qr.id === editingQR.id ? { ...qr, code: editQRCode.trim().toLowerCase() } : qr)
+          .sort((a, b) => a.code.localeCompare(b.code))
+      );
+      setEditDialogOpen(false);
+      setEditingQR(null);
+      toast.success('QR actualizado');
+    } catch (error) {
+      console.error('Error updating QR:', error);
+      toast.error('Error al actualizar QR');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -379,6 +423,37 @@ const QRSettings = () => {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* Edit QR Dialog */}
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar código QR</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-qr-code">Código (utm_campaign)</Label>
+                    <Input
+                      id="edit-qr-code"
+                      placeholder="ej: mesa1, clinica1, natatorio1"
+                      value={editQRCode}
+                      onChange={(e) => setEditQRCode(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Nueva URL: {buildQRUrl(editQRCode)}
+                  </p>
+                  <Button 
+                    onClick={handleEditQR} 
+                    disabled={!editQRCode.trim() || savingEdit}
+                    className="w-full"
+                  >
+                    {savingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Guardar cambios
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {loadingQRs ? (
@@ -399,6 +474,7 @@ const QRSettings = () => {
                     <TableHead className="w-[120px]">QR Code</TableHead>
                     <TableHead>URL</TableHead>
                     <TableHead className="w-[180px]">Tipo</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
@@ -452,6 +528,17 @@ const QRSettings = () => {
                           title="Descargar QR"
                         >
                           <Download className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditDialog(qr)}
+                          title="Editar QR"
+                        >
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
                       <TableCell>
