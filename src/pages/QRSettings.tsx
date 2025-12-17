@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, QrCode, Plus, Copy, Check, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, QrCode, Plus, Copy, Check, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import QRCodeLib from "qrcode";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import {
   Table,
@@ -232,6 +233,29 @@ const QRSettings = () => {
     }
   };
 
+  const downloadQRCode = async (code: string) => {
+    const url = buildQRUrl(code);
+    try {
+      const dataUrl = await QRCodeLib.toDataURL(url, {
+        width: 512,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      });
+      
+      const link = document.createElement('a');
+      link.download = `qr-${code}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success('QR descargado');
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      toast.error('Error al generar QR');
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -376,6 +400,7 @@ const QRSettings = () => {
                     <TableHead>URL</TableHead>
                     <TableHead className="w-[180px]">Tipo</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -417,6 +442,17 @@ const QRSettings = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => downloadQRCode(qr.code)}
+                          title="Descargar QR"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                       <TableCell>
                         <Button
