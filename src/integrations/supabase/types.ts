@@ -114,6 +114,44 @@ export type Database = {
           },
         ]
       }
+      qr_locations: {
+        Row: {
+          code: string
+          created_at: string | null
+          delivery_type: string
+          enabled: boolean | null
+          id: string
+          name: string | null
+          venue_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          delivery_type?: string
+          enabled?: boolean | null
+          id?: string
+          name?: string | null
+          venue_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          delivery_type?: string
+          enabled?: boolean | null
+          id?: string
+          name?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_locations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           created_at: string
