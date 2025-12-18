@@ -449,61 +449,8 @@ const QRSettings = () => {
           </div>
         </div>
 
-        {/* Commerce/Business Info */}
-        <div className="bg-card border border-border rounded-lg p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Store className="h-5 w-5 text-primary" />
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Comercio</h2>
-              <p className="text-sm text-muted-foreground">Información del local para mostrar en el menú</p>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="google-maps" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Enlace a Google Maps
-              </Label>
-              <Input
-                id="google-maps"
-                placeholder="https://maps.google.com/..."
-                value={googleMapsUrl}
-                onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                className="max-w-xl"
-              />
-              <p className="text-xs text-muted-foreground">
-                Este enlace se mostrará para que los clientes puedan encontrar el local (especialmente útil para retiro)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="venue-phone" className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                Celular / Teléfono
-              </Label>
-              <Input
-                id="venue-phone"
-                placeholder="+54 9 11 1234-5678"
-                value={venuePhone}
-                onChange={(e) => setVenuePhone(e.target.value)}
-                className="max-w-xs"
-              />
-            </div>
-
-            <Button 
-              onClick={handleSaveCommerce} 
-              disabled={savingCommerce}
-              size="sm"
-            >
-              {savingCommerce ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Guardar datos del comercio
-            </Button>
-          </div>
-        </div>
-
         {/* QR Locations Table */}
-        <div className="bg-card border border-border rounded-lg p-6">
+        <div className="bg-card border border-border rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-foreground">Códigos QR</h2>
@@ -690,6 +637,59 @@ const QRSettings = () => {
               </Table>
             </div>
           )}
+        </div>
+
+        {/* Commerce/Business Info */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Store className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Comercio</h2>
+              <p className="text-sm text-muted-foreground">Información del local para mostrar en el menú</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="google-maps" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Enlace a Google Maps
+              </Label>
+              <Input
+                id="google-maps"
+                placeholder="https://maps.google.com/..."
+                value={googleMapsUrl}
+                onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                className="max-w-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                Este enlace se mostrará para que los clientes puedan encontrar el local (especialmente útil para retiro)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="venue-phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Celular / Teléfono
+              </Label>
+              <Input
+                id="venue-phone"
+                placeholder="+54 9 11 1234-5678"
+                value={venuePhone}
+                onChange={(e) => setVenuePhone(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+
+            <Button 
+              onClick={handleSaveCommerce} 
+              disabled={savingCommerce}
+              size="sm"
+            >
+              {savingCommerce ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Guardar datos del comercio
+            </Button>
+          </div>
         </div>
       </main>
     </div>

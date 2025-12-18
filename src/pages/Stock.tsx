@@ -50,7 +50,7 @@ const Stock = () => {
 
       {/* Content */}
       <main className="px-6 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Stock de Productos</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">Menu Digital</h1>
         <StockManagement />
       </main>
     </div>
