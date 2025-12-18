@@ -1,11 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { OrderColumn } from "@/components/OrderColumn";
 import { OrderHistory } from "@/components/OrderHistory";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 import { Order, OrderStatus } from "@/types/order";
-import { Loader2, Settings, LogOut, Package, ChevronRight, QrCode } from "lucide-react";
+import {
+  Loader2,
+  Settings,
+  LogOut,
+  Package,
+  ChevronRight,
+  QrCode,
+} from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -25,12 +32,32 @@ const columns: { title: string; status: OrderStatus }[] = [
   { title: "Terminadas", status: "terminadas" },
 ];
 
-const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar', 'terminadas'];
+const statusFlow: OrderStatus[] = [
+  "entrante",
+  "preparacion",
+  "retirar",
+  "enviar",
+  "terminadas",
+];
+
+const FullScreenLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, venue, signOut } = useAuth();
-  const { loading, getOrdersByStatus, getOrdersByDate, getAvailableDates, updateOrderStatus } = useOrders();
+
+  // ✅ Importante: el hook se puede llamar igual; pero el render lo gateamos
+  const {
+    loading: ordersLoading,
+    getOrdersByStatus,
+    getOrdersByDate,
+    getAvailableDates,
+    updateOrderStatus,
+  } = useOrders();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -61,17 +88,17 @@ const Index = () => {
     }
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // ✅ 1) Primero resolvé auth
+  if (authLoading) return <FullScreenLoader />;
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // ✅ 2) Si no está autenticado, no muestres nada (o redirect ya corrió)
+  if (!isAuthenticated) return null;
+
+  // ✅ 3) Ya está autenticado, pero todavía no llegó venue (evita “doble loading”)
+  if (!venue?.id) return <FullScreenLoader />;
+
+  // ✅ 4) Ahora sí: loading de orders (1 sola vez)
+  if (ordersLoading) return <FullScreenLoader />;
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,14 +106,12 @@ const Index = () => {
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img src={tappealoLogo} alt="Tappealo" className="h-10" />
-          {venue && (
-            <div className="border-l border-border pl-4">
-              <p className="font-semibold text-foreground">{venue.name}</p>
-              <p className="text-xs text-muted-foreground">/{venue.slug}</p>
-            </div>
-          )}
+          <div className="border-l border-border pl-4">
+            <p className="font-semibold text-foreground">{venue.name}</p>
+            <p className="text-xs text-muted-foreground">/{venue.slug}</p>
+          </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Sheet>
             <SheetTrigger asChild>
@@ -122,7 +147,7 @@ const Index = () => {
               </nav>
             </SheetContent>
           </Sheet>
-          
+
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
           </Button>
@@ -148,15 +173,14 @@ const Index = () => {
               onMovePrev={handleMovePrev}
               canMoveNext={index < columns.length - 1}
               canMovePrev={index > 0}
-              venueName={venue?.name}
+              venueName={venue.name}
             />
           ))}
         </div>
 
-        {/* Order History */}
-        <OrderHistory 
-          availableDates={getAvailableDates()} 
-          getOrdersByDate={getOrdersByDate} 
+        <OrderHistory
+          availableDates={getAvailableDates()}
+          getOrdersByDate={getOrdersByDate}
         />
       </main>
     </div>

@@ -52,20 +52,40 @@ export function useOrders() {
   const { venue } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
   const { toast } = useToast();
   const { playNotificationSound } = useNotificationSound();
+
+  // ✅ refs para NO re-suscribirse por deps inestables
+  const toastRef = useRef(toast);
+  const soundRef = useRef(playNotificationSound);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+  useEffect(() => {
+    soundRef.current = playNotificationSound;
+  }, [playNotificationSound]);
+
   const initialized = useRef(false);
+  const currentVenueId = useRef<string | null>(null);
 
   useEffect(() => {
-    // ✅ Si todavía no hay venue, NO te quedes en loading infinito
+    // si no hay venue
     if (!venue?.id) {
       setOrders([]);
       setLoading(false);
       initialized.current = false;
+      currentVenueId.current = null;
       return;
     }
 
-    setLoading(true);
+    // ✅ si cambia de venue, reiniciamos. Si es el mismo, no “parpadees” con loading.
+    const venueChanged = currentVenueId.current !== venue.id;
+    currentVenueId.current = venue.id;
+    if (venueChanged) {
+      setLoading(true);
+      initialized.current = false;
+    }
 
     const q = query(
       collection(db, "orders"),
@@ -73,77 +93,66 @@ export function useOrders() {
       orderBy("createdAt", "desc")
     );
 
-    let unsubscribe = () => {};
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => mapDocToOrder(d.id, d.data()));
 
-    const startSnapshot = () => {
-      unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const list = snapshot.docs.map((d) => mapDocToOrder(d.id, d.data()));
-
-          if (initialized.current) {
-            snapshot.docChanges().forEach((change) => {
-              if (change.type === "added") {
-                const newOrder = mapDocToOrder(
-                  change.doc.id,
-                  change.doc.data()
-                );
-                playNotificationSound();
-                toast({
-                  title: "🔔 Nuevo pedido",
-                  description: `Pedido recibido: ${newOrder.lugarEntrega}`,
-                });
-              }
-            });
-          }
-
-          setOrders(list);
-          setLoading(false);
-          initialized.current = true;
-        },
-        async (error) => {
-          console.error("Error fetching orders:", error);
-
-          // ✅ Si falta el índice, hacemos fallback sin orderBy (y ordenamos en memoria)
-          if (isIndexError(error)) {
-            try {
-              const fallbackQ = query(
-                collection(db, "orders"),
-                where("venueId", "==", venue.id)
-              );
-              const snap = await getDocs(fallbackQ);
-              const list = snap.docs.map((d) => mapDocToOrder(d.id, d.data()));
-              setOrders(sortByCreatedAtDesc(list));
-              setLoading(false);
-
-              toast({
-                title: "Falta índice en Firestore",
-                description:
-                  "Estoy usando un modo compatible (sin índice). Creá el índice para mejor performance.",
-                variant: "destructive",
+        if (initialized.current) {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const newOrder = mapDocToOrder(change.doc.id, change.doc.data());
+              soundRef.current?.();
+              toastRef.current?.({
+                title: "🔔 Nuevo pedido",
+                description: `Pedido recibido: ${newOrder.lugarEntrega}`,
               });
-              return;
-            } catch (e) {
-              console.error("Fallback fetch failed:", e);
             }
-          }
-
-          toast({
-            title: "Error",
-            description: "No se pudieron cargar los pedidos",
-            variant: "destructive",
           });
-          setLoading(false);
         }
-      );
-    };
 
-    startSnapshot();
+        setOrders(list);
+        setLoading(false);
+        initialized.current = true;
+      },
+      async (error) => {
+        console.error("Error fetching orders:", error);
 
-    return () => {
-      unsubscribe();
-    };
-  }, [venue?.id, playNotificationSound, toast]);
+        // fallback si falta índice
+        if (isIndexError(error)) {
+          try {
+            const fallbackQ = query(
+              collection(db, "orders"),
+              where("venueId", "==", venue.id)
+            );
+            const snap = await getDocs(fallbackQ);
+            const list = snap.docs.map((d) => mapDocToOrder(d.id, d.data()));
+            setOrders(sortByCreatedAtDesc(list));
+            setLoading(false);
+
+            toastRef.current?.({
+              title: "Falta índice en Firestore",
+              description:
+                "Estoy usando un modo compatible (sin índice). Creá el índice para mejor performance.",
+              variant: "destructive",
+            });
+            return;
+          } catch (e) {
+            console.error("Fallback fetch failed:", e);
+          }
+        }
+
+        toastRef.current?.({
+          title: "Error",
+          description: "No se pudieron cargar los pedidos",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [venue?.id]);
 
   const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
     try {
@@ -152,13 +161,13 @@ export function useOrders() {
         updatedAt: Timestamp.now(),
       });
 
-      toast({
+      toastRef.current?.({
         title: "Pedido actualizado",
         description: `Pedido movido a ${newStatus}`,
       });
     } catch (error) {
       console.error("Error updating order:", error);
-      toast({
+      toastRef.current?.({
         title: "Error",
         description: "No se pudo actualizar el pedido",
         variant: "destructive",
@@ -214,33 +223,5 @@ export function useOrders() {
     getOrdersByDate,
     getAvailableDates,
     updateOrderStatus,
-    refetch: async () => {
-      if (!venue?.id) return;
-      setLoading(true);
-
-      // Misma idea: intentamos con orderBy, si falla, fallback sin orderBy
-      try {
-        const q = query(
-          collection(db, "orders"),
-          where("venueId", "==", venue.id),
-          orderBy("createdAt", "desc")
-        );
-        const snap = await getDocs(q);
-        setOrders(snap.docs.map((d) => mapDocToOrder(d.id, d.data())));
-      } catch (error: any) {
-        if (isIndexError(error)) {
-          const fallbackQ = query(
-            collection(db, "orders"),
-            where("venueId", "==", venue.id)
-          );
-          const snap = await getDocs(fallbackQ);
-          setOrders(sortByCreatedAtDesc(snap.docs.map((d) => mapDocToOrder(d.id, d.data()))));
-        } else {
-          throw error;
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
   };
 }
