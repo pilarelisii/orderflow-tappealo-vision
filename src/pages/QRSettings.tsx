@@ -66,6 +66,29 @@ const QRSettings = () => {
   const [editQRCode, setEditQRCode] = useState("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [menuBaseUrl, setMenuBaseUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(`menu_base_url_${venue?.id}`) || '';
+    }
+    return '';
+  });
+
+  // Load menuBaseUrl when venue changes
+  useEffect(() => {
+    if (venue?.id) {
+      const savedUrl = localStorage.getItem(`menu_base_url_${venue.id}`);
+      if (savedUrl) {
+        setMenuBaseUrl(savedUrl);
+      }
+    }
+  }, [venue?.id]);
+
+  const handleMenuBaseUrlChange = (url: string) => {
+    setMenuBaseUrl(url);
+    if (venue?.id) {
+      localStorage.setItem(`menu_base_url_${venue.id}`, url);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -148,8 +171,9 @@ const QRSettings = () => {
   };
 
   const buildQRUrl = (code: string) => {
-    if (!venue?.slug) return '';
-    return `https://${venue.slug}.tappealo.com/?utm_source=qr&utm_campaign=${code}`;
+    if (!menuBaseUrl) return '';
+    const separator = menuBaseUrl.includes('?') ? '&' : '?';
+    return `${menuBaseUrl}${separator}utm_source=qr&utm_campaign=${code}`;
   };
 
   const copyToClipboard = async (code: string, id: string) => {
@@ -367,6 +391,32 @@ const QRSettings = () => {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Menu Base URL */}
+        <div className="bg-card border border-border rounded-lg p-6 mb-6">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="menu-url" className="text-base font-medium">
+                URL Base del Menú
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Ingresa la URL base de tu menú. Los parámetros utm_source y utm_campaign se agregarán automáticamente.
+              </p>
+            </div>
+            <Input
+              id="menu-url"
+              placeholder="https://tudominio.com/menu"
+              value={menuBaseUrl}
+              onChange={(e) => handleMenuBaseUrlChange(e.target.value)}
+              className="max-w-xl"
+            />
+            {menuBaseUrl && (
+              <p className="text-xs text-muted-foreground">
+                Ejemplo de URL generada: {buildQRUrl('mesa1')}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* QR Locations Table */}
