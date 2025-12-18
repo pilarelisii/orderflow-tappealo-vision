@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { convertToWebP, isImageFile, needsConversion } from "@/lib/imageUtils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -191,25 +192,39 @@ export function StockManagement() {
     setIsEditMode(true);
   };
 
-  const handleImageSelect = (productId: number, file: File) => {
-    if (!file.type.startsWith('image/')) {
+  const handleImageSelect = async (productId: number, file: File) => {
+    if (!isImageFile(file)) {
       toast.error('Solo se permiten archivos de imagen');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 10MB');
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    setEditedProducts(prev => ({
-      ...prev,
-      [productId]: {
-        ...prev[productId],
-        imageFile: file,
-        imagePreview: previewUrl,
-      },
-    }));
+    try {
+      let processedFile = file;
+      
+      // Convert to WebP if it's JPG or PNG
+      if (needsConversion(file)) {
+        toast.info('Convirtiendo imagen a WebP...');
+        processedFile = await convertToWebP(file, 5120); // 5MB max
+        toast.success('Imagen convertida a WebP');
+      }
+
+      const previewUrl = URL.createObjectURL(processedFile);
+      setEditedProducts(prev => ({
+        ...prev,
+        [productId]: {
+          ...prev[productId],
+          imageFile: processedFile,
+          imagePreview: previewUrl,
+        },
+      }));
+    } catch (error) {
+      console.error('Error processing image:', error);
+      toast.error('Error al procesar la imagen');
+    }
   };
 
   const cancelEdit = () => {
@@ -275,7 +290,7 @@ export function StockManagement() {
 
         // Upload image if there's a new one
         if (edited.imageFile) {
-          const fileExt = edited.imageFile.name.split('.').pop();
+          const fileExt = edited.imageFile.name.split('.').pop() || 'webp';
           const fileName = `${product.venue_id}/${product.id}-${Date.now()}.${fileExt}`;
           
           const { error: uploadError } = await supabase.storage
@@ -334,17 +349,32 @@ export function StockManagement() {
     }
   };
 
-  const handleNewProductImageSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
+  const handleNewProductImageSelect = async (file: File) => {
+    if (!isImageFile(file)) {
       toast.error('Solo se permiten archivos de imagen');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 10MB');
       return;
     }
-    const previewUrl = URL.createObjectURL(file);
-    setNewProduct(prev => ({ ...prev, imageFile: file, imagePreview: previewUrl }));
+
+    try {
+      let processedFile = file;
+      
+      // Convert to WebP if it's JPG or PNG
+      if (needsConversion(file)) {
+        toast.info('Convirtiendo imagen a WebP...');
+        processedFile = await convertToWebP(file, 5120); // 5MB max
+        toast.success('Imagen convertida a WebP');
+      }
+
+      const previewUrl = URL.createObjectURL(processedFile);
+      setNewProduct(prev => ({ ...prev, imageFile: processedFile, imagePreview: previewUrl }));
+    } catch (error) {
+      console.error('Error processing image:', error);
+      toast.error('Error al procesar la imagen');
+    }
   };
 
   const addProduct = async () => {
@@ -381,7 +411,7 @@ export function StockManagement() {
       let imageUrl: string | null = null;
 
       if (newProduct.imageFile) {
-        const fileExt = newProduct.imageFile.name.split('.').pop();
+        const fileExt = newProduct.imageFile.name.split('.').pop() || 'webp';
         const fileName = `${venueId}/${newId}-${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
