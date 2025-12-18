@@ -16,9 +16,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get venue slug from query params
+    // Get venue slug and qr code from query params
     const url = new URL(req.url);
     const venueSlug = url.searchParams.get('venue');
+    const qrCode = url.searchParams.get('qr'); // utm_campaign value
 
     if (!venueSlug) {
       console.log('Missing venue parameter');
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Fetching products for venue: ${venueSlug}`);
+    console.log(`Fetching products for venue: ${venueSlug}, qr: ${qrCode || 'none'}`);
 
     // First get the venue by slug
     const { data: venue, error: venueError } = await supabase
@@ -75,6 +76,34 @@ Deno.serve(async (req) => {
 
     console.log(`Found venue: ${venue.name} (${venue.id})`);
 
+    // If QR code provided, look up delivery_type from qr_locations
+    let deliveryType: string | null = null;
+    let qrLocation: { name: string | null; delivery_type: string } | null = null;
+    
+    if (qrCode) {
+      const { data: qrData, error: qrError } = await supabase
+        .from('qr_locations')
+        .select('name, delivery_type, enabled')
+        .eq('venue_id', venue.id)
+        .eq('code', qrCode)
+        .maybeSingle();
+
+      if (qrError) {
+        console.error('Error fetching QR location:', qrError);
+        // Don't fail the request, just log the error
+      } else if (qrData) {
+        if (qrData.enabled) {
+          deliveryType = qrData.delivery_type;
+          qrLocation = { name: qrData.name, delivery_type: qrData.delivery_type };
+          console.log(`Found QR location: ${qrCode} -> delivery_type: ${deliveryType}`);
+        } else {
+          console.log(`QR location disabled: ${qrCode}`);
+        }
+      } else {
+        console.log(`QR code not found: ${qrCode}`);
+      }
+    }
+
     // Fetch products for this venue
     const { data: products, error: productsError } = await supabase
       .from('products')
@@ -90,12 +119,21 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully fetched ${products?.length || 0} products for ${venue.name}`);
 
+    // Build response with optional QR info
+    const response: Record<string, unknown> = { 
+      venue: { id: venue.id, name: venue.name },
+      service: 'enabled',
+      products 
+    };
+
+    // Add QR location info if available
+    if (qrLocation) {
+      response.qr_location = qrLocation;
+      response.delivery_type = deliveryType;
+    }
+
     return new Response(
-      JSON.stringify({ 
-        venue: { id: venue.id, name: venue.name },
-        service: 'enabled',
-        products 
-      }),
+      JSON.stringify(response),
       { 
         headers: { 
           ...corsHeaders, 
