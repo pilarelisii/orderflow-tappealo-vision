@@ -197,8 +197,8 @@ export function StockManagement() {
       toast.error('Solo se permiten archivos de imagen');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 10MB');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 20MB');
       return;
     }
 
@@ -354,8 +354,8 @@ export function StockManagement() {
       toast.error('Solo se permiten archivos de imagen');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 10MB');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 20MB');
       return;
     }
 
