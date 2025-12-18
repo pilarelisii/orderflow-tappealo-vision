@@ -156,9 +156,11 @@ export type Database = {
         Row: {
           created_at: string
           enabled: boolean
+          google_maps_url: string | null
           id: string
           logo_url: string | null
           name: string
+          phone: string | null
           service_active: boolean
           slug: string
           user_id: string | null
@@ -166,9 +168,11 @@ export type Database = {
         Insert: {
           created_at?: string
           enabled?: boolean
+          google_maps_url?: string | null
           id?: string
           logo_url?: string | null
           name: string
+          phone?: string | null
           service_active?: boolean
           slug: string
           user_id?: string | null
@@ -176,9 +180,11 @@ export type Database = {
         Update: {
           created_at?: string
           enabled?: boolean
+          google_maps_url?: string | null
           id?: string
           logo_url?: string | null
           name?: string
+          phone?: string | null
           service_active?: boolean
           slug?: string
           user_id?: string | null

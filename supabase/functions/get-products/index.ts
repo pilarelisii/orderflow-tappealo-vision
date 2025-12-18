@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching products for venue: ${venueSlug}, qr: ${qrCode || 'none'}`);
 
-    // First get the venue by slug
+    // First get the venue by slug with all commerce info
     const { data: venue, error: venueError } = await supabase
       .from('venues')
-      .select('id, name, enabled, service_active')
+      .select('id, name, enabled, service_active, logo_url, google_maps_url, phone')
       .eq('slug', venueSlug)
       .eq('enabled', true)
       .maybeSingle();
@@ -63,7 +63,13 @@ Deno.serve(async (req) => {
       console.log(`Service disabled for venue: ${venue.name}`);
       return new Response(
         JSON.stringify({ 
-          venue: { id: venue.id, name: venue.name },
+          venue: { 
+            id: venue.id, 
+            name: venue.name,
+            logo_url: venue.logo_url,
+            google_maps_url: venue.google_maps_url,
+            phone: venue.phone
+          },
           service: 'disabled',
           message: 'El local está cerrado, no se pueden realizar pedidos',
           products: []
@@ -119,9 +125,15 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully fetched ${products?.length || 0} products for ${venue.name}`);
 
-    // Build response with optional QR info
+    // Build response with optional QR info and venue commerce info
     const response: Record<string, unknown> = { 
-      venue: { id: venue.id, name: venue.name },
+      venue: { 
+        id: venue.id, 
+        name: venue.name,
+        logo_url: venue.logo_url,
+        google_maps_url: venue.google_maps_url,
+        phone: venue.phone
+      },
       service: 'enabled',
       products 
     };

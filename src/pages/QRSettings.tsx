@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, QrCode, Plus, Copy, Check, Trash2, Download, Pencil } from "lucide-react";
+import { Loader2, ArrowLeft, QrCode, Plus, Copy, Check, Trash2, Download, Pencil, Store, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -72,6 +72,11 @@ const QRSettings = () => {
     }
     return '';
   });
+  
+  // Commerce/Business fields
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+  const [venuePhone, setVenuePhone] = useState("");
+  const [savingCommerce, setSavingCommerce] = useState(false);
 
   // Load menuBaseUrl when venue changes
   useEffect(() => {
@@ -97,28 +102,30 @@ const QRSettings = () => {
   }, [authLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
-    const fetchServiceStatus = async () => {
+    const fetchVenueData = async () => {
       if (!venue?.id) return;
       
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('service_active')
+          .select('service_active, google_maps_url, phone')
           .eq('id', venue.id)
           .single();
 
         if (error) throw error;
         setServiceActive(data.service_active);
+        setGoogleMapsUrl(data.google_maps_url || "");
+        setVenuePhone(data.phone || "");
       } catch (error) {
-        console.error('Error fetching service status:', error);
-        toast.error('Error al cargar el estado del servicio');
+        console.error('Error fetching venue data:', error);
+        toast.error('Error al cargar los datos del comercio');
       } finally {
         setLoading(false);
       }
     };
 
     if (venue?.id) {
-      fetchServiceStatus();
+      fetchVenueData();
     }
   }, [venue?.id]);
 
@@ -167,6 +174,29 @@ const QRSettings = () => {
       toast.error('Error al actualizar el estado del servicio');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleSaveCommerce = async () => {
+    if (!venue?.id) return;
+    
+    setSavingCommerce(true);
+    try {
+      const { error } = await supabase
+        .from('venues')
+        .update({ 
+          google_maps_url: googleMapsUrl || null, 
+          phone: venuePhone || null 
+        })
+        .eq('id', venue.id);
+
+      if (error) throw error;
+      toast.success('Datos del comercio actualizados');
+    } catch (error) {
+      console.error('Error updating commerce data:', error);
+      toast.error('Error al actualizar los datos del comercio');
+    } finally {
+      setSavingCommerce(false);
     }
   };
 
@@ -353,10 +383,10 @@ const QRSettings = () => {
       {/* Content */}
       <main className="px-6 py-8 max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <QrCode className="h-8 w-8 text-primary" />
+          <Store className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Configuración de QRs</h1>
-            <p className="text-muted-foreground">Controla el estado del servicio y gestiona tus códigos QR</p>
+            <h1 className="text-2xl font-bold text-foreground">Configuración</h1>
+            <p className="text-muted-foreground">Gestiona tu comercio, servicio y códigos QR</p>
           </div>
         </div>
 
@@ -416,6 +446,59 @@ const QRSettings = () => {
                 Ejemplo de URL generada: {buildQRUrl('mesa1')}
               </p>
             )}
+          </div>
+        </div>
+
+        {/* Commerce/Business Info */}
+        <div className="bg-card border border-border rounded-lg p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Store className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Comercio</h2>
+              <p className="text-sm text-muted-foreground">Información del local para mostrar en el menú</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="google-maps" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Enlace a Google Maps
+              </Label>
+              <Input
+                id="google-maps"
+                placeholder="https://maps.google.com/..."
+                value={googleMapsUrl}
+                onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                className="max-w-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                Este enlace se mostrará para que los clientes puedan encontrar el local (especialmente útil para retiro)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="venue-phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Celular / Teléfono
+              </Label>
+              <Input
+                id="venue-phone"
+                placeholder="+54 9 11 1234-5678"
+                value={venuePhone}
+                onChange={(e) => setVenuePhone(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+
+            <Button 
+              onClick={handleSaveCommerce} 
+              disabled={savingCommerce}
+              size="sm"
+            >
+              {savingCommerce ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Guardar datos del comercio
+            </Button>
           </div>
         </div>
 
