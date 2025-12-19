@@ -1,11 +1,13 @@
 import { Order, OrderStatus } from "@/types/order";
 import { OrderCard } from "./OrderCard";
 import { cn } from "@/lib/utils";
+import { generateOrderNumber } from "@/lib/orderNumber";
 
 interface OrderColumnProps {
   title: string;
   status: OrderStatus;
   orders: Order[];
+  allOrders: Order[];
   onMoveNext: (order: Order) => void;
   onMovePrev: (order: Order) => void;
   canMoveNext: boolean;
@@ -29,7 +31,7 @@ const badgeStyles: Record<OrderStatus, string> = {
   terminadas: 'bg-column-terminadas',
 };
 
-export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderColumnProps) {
+export function OrderColumn({ title, status, orders, allOrders, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderColumnProps) {
   return (
     <div 
       className={cn(
@@ -74,6 +76,7 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
               canMoveNext={canMoveNext}
               canMovePrev={canMovePrev}
               venueName={venueName}
+              orderNumber={generateOrderNumber(order, allOrders)}
             />
           ))
         )}

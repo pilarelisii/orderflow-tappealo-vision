@@ -18,6 +18,7 @@ interface OrderCardProps {
   canMoveNext: boolean;
   canMovePrev: boolean;
   venueName?: string;
+  orderNumber?: string;
 }
 
 const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: string }> = {
@@ -28,7 +29,7 @@ const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: strin
   terminadas: { next: null, label: '' },
 };
 
-export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderCardProps) {
+export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName, orderNumber }: OrderCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
@@ -48,7 +49,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
     if (isQZConnected() && selectedPrinter) {
       setIsPrinting(true);
       try {
-        const commands = generateReceiptCommands(order, venueName || 'PEDIDO');
+        const commands = generateReceiptCommands(order, venueName || 'PEDIDO', orderNumber);
         await printRaw(selectedPrinter, commands);
         
         if (openDrawer) {
@@ -86,11 +87,13 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
     if (!printDocument) return;
 
     printDocument.open();
+    const displayOrderNumber = orderNumber || order.id.slice(0, 8).toUpperCase();
+    
     printDocument.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Pedido #${order.id.slice(0, 8).toUpperCase()}</title>
+          <title>Pedido #${displayOrderNumber}</title>
           <style>
             @page {
               size: 80mm auto;
@@ -167,7 +170,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
           <div class="receipt">
             <div class="header">
               <h1>${venueName?.toUpperCase() || 'PEDIDO'}</h1>
-              <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
+              <p>Pedido #${displayOrderNumber}</p>
               <p>${new Date(order.created_at).toLocaleString('es-CL')}</p>
             </div>
             <div class="items">
@@ -284,6 +287,13 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
       >
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
+            {/* Order number - displayed above location */}
+            {orderNumber && (
+              <div className="text-xs font-light text-muted-foreground tracking-wider mb-1.5">
+                #{orderNumber}
+              </div>
+            )}
+            
             {/* Location first - prominent */}
             {order.lugar_entrega && (
               <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">

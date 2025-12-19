@@ -30,7 +30,7 @@ const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, venue, signOut } = useAuth();
-  const { loading, getOrdersByStatus, getOrdersByDate, getAvailableDates, updateOrderStatus } = useOrders();
+  const { loading, orders, getOrdersByStatus, getOrdersByDate, getAvailableDates, updateOrderStatus } = useOrders();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -164,6 +164,7 @@ const Index = () => {
               title={title}
               status={status}
               orders={getOrdersByStatus(status)}
+              allOrders={orders}
               onMoveNext={handleMoveNext}
               onMovePrev={handleMovePrev}
               canMoveNext={index < columns.length - 1}

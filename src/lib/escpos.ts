@@ -33,11 +33,11 @@ const formatPrice = (price: number): string => {
   }).format(price);
 };
 
-export const generateReceiptCommands = (order: Order, venueName: string): string[] => {
+export const generateReceiptCommands = (order: Order, venueName: string, orderNumber?: string): string[] => {
   const commands: string[] = [];
   const orderDate = new Date(order.created_at);
   const formattedDate = format(orderDate, "dd/MM/yyyy HH:mm", { locale: es });
-  const orderNumber = order.id.slice(-6).toUpperCase();
+  const displayOrderNumber = orderNumber || order.id.slice(-6).toUpperCase();
   
   // Initialize
   commands.push(COMMANDS.INIT);
@@ -54,7 +54,7 @@ export const generateReceiptCommands = (order: Order, venueName: string): string
   // Order number
   commands.push(COMMANDS.DOUBLE_HEIGHT);
   commands.push(COMMANDS.BOLD_ON);
-  commands.push(`PEDIDO #${orderNumber}\n`);
+  commands.push(`PEDIDO #${displayOrderNumber}\n`);
   commands.push(COMMANDS.NORMAL_SIZE);
   commands.push(COMMANDS.BOLD_OFF);
   commands.push('\n');
