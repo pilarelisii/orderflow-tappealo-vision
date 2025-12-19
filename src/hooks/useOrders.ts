@@ -32,6 +32,9 @@ export function useOrders() {
   const playNotificationSoundRef = useRef(playNotificationSound);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSettingUpRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
+  const channelIdRef = useRef(0); // To track which channel is active
 
   // Keep refs updated
   useEffect(() => {
@@ -87,6 +90,13 @@ export function useOrders() {
   };
 
   const setupRealtimeSubscription = useCallback(() => {
+    // Prevent duplicate setup calls
+    if (isSettingUpRef.current) {
+      console.log('⏳ Setup already in progress, skipping...');
+      return;
+    }
+    isSettingUpRef.current = true;
+
     // Clean up existing channel
     if (channelRef.current) {
       console.log('🔄 Cleaning up existing channel...');
@@ -94,10 +104,18 @@ export function useOrders() {
       channelRef.current = null;
     }
 
-    console.log('📡 Setting up realtime subscription...');
+    // Clear any pending reconnect
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    // Increment channel ID to track which channel is active
+    const currentChannelId = ++channelIdRef.current;
+    console.log(`📡 Setting up realtime subscription (channel #${currentChannelId})...`);
     
     const channel = supabase
-      .channel('orders-realtime')
+      .channel(`orders-realtime-${currentChannelId}`)
       .on(
         'postgres_changes',
         {
@@ -106,6 +124,12 @@ export function useOrders() {
           table: 'orders'
         },
         (payload) => {
+          // Ignore events from old channels
+          if (currentChannelId !== channelIdRef.current) {
+            console.log(`📨 Ignoring event from old channel #${currentChannelId}`);
+            return;
+          }
+
           console.log('📨 Realtime event received:', payload.eventType, payload);
           
           if (payload.eventType === 'INSERT') {
@@ -140,37 +164,49 @@ export function useOrders() {
         }
       )
       .subscribe((status, err) => {
-        console.log('📡 Subscription status:', status);
-        
-        if (err) {
-          console.error('❌ Subscription error:', err);
-          setIsConnected(false);
-          
-          // Attempt reconnection
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 Attempting to reconnect...');
-            setupRealtimeSubscription();
-          }, 3000);
+        // Ignore status from old channels
+        if (currentChannelId !== channelIdRef.current) {
+          console.log(`📡 Ignoring status from old channel #${currentChannelId}: ${status}`);
           return;
         }
+
+        console.log(`📡 Channel #${currentChannelId} status: ${status}`);
         
         if (status === 'SUBSCRIBED') {
           console.log('✅ Connected to realtime - orders channel');
           setIsConnected(true);
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          console.log('⚠️ Channel closed or error, will reconnect...');
+          isSettingUpRef.current = false;
+          reconnectAttemptsRef.current = 0; // Reset backoff on success
+        } else if (status === 'CHANNEL_ERROR') {
+          console.log('❌ Channel error, will reconnect with backoff...');
           setIsConnected(false);
+          isSettingUpRef.current = false;
           
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
+          // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+          const backoff = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+          reconnectAttemptsRef.current++;
+          
+          console.log(`🔄 Reconnecting in ${backoff}ms (attempt #${reconnectAttemptsRef.current})...`);
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 Attempting to reconnect...');
             setupRealtimeSubscription();
-          }, 3000);
+          }, backoff);
+        } else if (status === 'CLOSED') {
+          // Only reconnect if this was unexpected (not from cleanup)
+          if (channelRef.current === channel) {
+            console.log('⚠️ Channel closed unexpectedly, reconnecting...');
+            setIsConnected(false);
+            isSettingUpRef.current = false;
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              setupRealtimeSubscription();
+            }, 1000);
+          } else {
+            console.log('📡 Channel closed (expected from cleanup)');
+          }
+        }
+        
+        if (err) {
+          console.error('❌ Subscription error:', err);
         }
       });
 
