@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Stock from "./pages/Stock";
 import QRSettings from "./pages/QRSettings";
+import ComercioSettings from "./pages/ComercioSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/stock" element={<Stock />} />
           <Route path="/qr-settings" element={<QRSettings />} />
+          <Route path="/comercio-settings" element={<ComercioSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
