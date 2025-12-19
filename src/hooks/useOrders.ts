@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderStatus } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
+import { RealtimeChannel } from "@supabase/supabase-js";
+
 // Helper to map DB row to Order type
 const mapToOrder = (row: Record<string, unknown>): Order => ({
   id: row.id as string,
@@ -21,16 +23,21 @@ const mapToOrder = (row: Record<string, unknown>): Order => ({
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
   const { playNotificationSound } = useNotificationSound();
-  const fetchOrders = async () => {
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    console.log('📥 Fetching orders...');
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ Error fetching orders:', error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los pedidos",
@@ -39,9 +46,10 @@ export function useOrders() {
       return;
     }
 
+    console.log(`✅ Fetched ${data.length} orders`);
     setOrders(data.map(d => mapToOrder(d as Record<string, unknown>)));
     setLoading(false);
-  };
+  }, [toast]);
 
   const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
     const { error } = await supabase
@@ -65,12 +73,23 @@ export function useOrders() {
     });
   };
 
-  useEffect(() => {
-    fetchOrders();
+  const setupRealtimeSubscription = useCallback(() => {
+    // Clean up existing channel
+    if (channelRef.current) {
+      console.log('🔄 Cleaning up existing channel...');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
-    // Subscribe to realtime changes
+    console.log('📡 Setting up realtime subscription...');
+    
     const channel = supabase
-      .channel('orders-changes')
+      .channel('orders-realtime', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: '' },
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -79,13 +98,20 @@ export function useOrders() {
           table: 'orders'
         },
         (payload) => {
-          console.log('Realtime update:', payload);
+          console.log('📨 Realtime event received:', payload.eventType, payload);
           
           if (payload.eventType === 'INSERT') {
             const newOrder = mapToOrder(payload.new as Record<string, unknown>);
-            setOrders(prev => [newOrder, ...prev]);
+            console.log('🆕 New order:', newOrder.id);
+            setOrders(prev => {
+              // Avoid duplicates
+              if (prev.some(o => o.id === newOrder.id)) {
+                console.log('⚠️ Order already exists, skipping');
+                return prev;
+              }
+              return [newOrder, ...prev];
+            });
             
-            // Play notification sound for new orders
             playNotificationSound();
             
             toast({
@@ -94,21 +120,85 @@ export function useOrders() {
             });
           } else if (payload.eventType === 'UPDATE') {
             const updatedOrder = mapToOrder(payload.new as Record<string, unknown>);
+            console.log('📝 Order updated:', updatedOrder.id);
             setOrders(prev => 
               prev.map(o => o.id === updatedOrder.id ? updatedOrder : o)
             );
           } else if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as Record<string, unknown>).id as string;
+            console.log('🗑️ Order deleted:', deletedId);
             setOrders(prev => prev.filter(o => o.id !== deletedId));
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('📡 Subscription status:', status);
+        
+        if (err) {
+          console.error('❌ Subscription error:', err);
+          setIsConnected(false);
+          
+          // Attempt reconnection
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 Attempting to reconnect...');
+            setupRealtimeSubscription();
+          }, 3000);
+          return;
+        }
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Connected to realtime - orders channel');
+          setIsConnected(true);
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          console.log('⚠️ Channel closed or error, will reconnect...');
+          setIsConnected(false);
+          
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 Attempting to reconnect...');
+            setupRealtimeSubscription();
+          }, 3000);
+        }
+      });
+
+    channelRef.current = channel;
+  }, [toast, playNotificationSound]);
+
+  useEffect(() => {
+    fetchOrders();
+    setupRealtimeSubscription();
+
+    // Handle visibility change for reconnection
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ Tab visible, checking connection...');
+        fetchOrders(); // Refresh data when tab becomes visible
+        if (!isConnected) {
+          setupRealtimeSubscription();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      supabase.removeChannel(channel);
+      console.log('🧹 Cleaning up useOrders...');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, []);
+  }, [fetchOrders, setupRealtimeSubscription, isConnected]);
 
   const isOrderRecent = (order: Order) => {
     const now = new Date();
@@ -119,8 +209,6 @@ export function useOrders() {
 
   const getOrdersByStatus = (status: OrderStatus) => {
     const filtered = orders.filter(order => order.status === status);
-    
-    // All columns only show orders created in the last 24h
     return filtered.filter(isOrderRecent);
   };
 
@@ -132,7 +220,6 @@ export function useOrders() {
       const orderDate = new Date(order.created_at);
       orderDate.setHours(0, 0, 0, 0);
       
-      // Check if it's from the target date AND older than 24h
       if (orderDate.getTime() !== targetDate.getTime()) return false;
       
       const now = new Date();
@@ -149,7 +236,6 @@ export function useOrders() {
       const orderDate = new Date(order.created_at);
       const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
       
-      // Only include orders older than 24h
       if (hoursDiff > 24) {
         const dateStr = orderDate.toISOString().split('T')[0];
         dates.add(dateStr);
@@ -162,6 +248,7 @@ export function useOrders() {
   return {
     orders,
     loading,
+    isConnected,
     getOrdersByStatus,
     getOrdersByDate,
     getAvailableDates,
