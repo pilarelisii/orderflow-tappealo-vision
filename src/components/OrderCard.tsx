@@ -5,10 +5,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer, Phone, CreditCard, Banknote } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useSwipeable } from "react-swipeable";
-import { PrintableReceipt } from "./PrintableReceipt";
-import { createRoot } from "react-dom/client";
+import { isQZConnected, printRaw } from "@/lib/qzTray";
+import { generateReceiptCommands } from "@/lib/escpos";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderCardProps {
   order: Order;
@@ -31,9 +32,47 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
   const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const { toast } = useToast();
 
-  const handlePrint = (e: React.MouseEvent) => {
+  const PRINTER_STORAGE_KEY = 'tappealo_selected_printer';
+  const OPEN_DRAWER_KEY = 'tappealo_open_drawer';
+
+  const handlePrint = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    const selectedPrinter = localStorage.getItem(PRINTER_STORAGE_KEY);
+    const openDrawer = localStorage.getItem(OPEN_DRAWER_KEY) === 'true';
+    
+    // Try QZ Tray first if connected and printer selected
+    if (isQZConnected() && selectedPrinter) {
+      setIsPrinting(true);
+      try {
+        const commands = generateReceiptCommands(order, venueName || 'PEDIDO');
+        await printRaw(selectedPrinter, commands);
+        
+        if (openDrawer) {
+          // ESC/POS command to open cash drawer
+          await printRaw(selectedPrinter, ['\x1B\x70\x00\x19\x19']);
+        }
+        
+        toast({
+          title: "Impreso",
+          description: "Ticket enviado a la impresora"
+        });
+        setIsPrinting(false);
+        return;
+      } catch (error) {
+        console.error('QZ print failed, falling back to browser:', error);
+        setIsPrinting(false);
+      }
+    }
+    
+    // Fallback to browser print
+    printWithBrowser();
+  };
+
+  const printWithBrowser = () => {
     
     // Create a hidden iframe for printing
     const printFrame = document.createElement('iframe');
