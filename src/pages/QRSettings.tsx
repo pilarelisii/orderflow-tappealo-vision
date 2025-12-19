@@ -130,6 +130,7 @@ const QRSettings = () => {
     setMenuBaseUrl(saved);
   }, [venue?.id]);
 
+  
   const handleMenuBaseUrlChange = (url: string) => {
     setMenuBaseUrl(url);
     if (venue?.id) localStorage.setItem(`menu_base_url_${venue.id}`, url);
