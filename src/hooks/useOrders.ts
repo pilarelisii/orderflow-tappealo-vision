@@ -26,8 +26,21 @@ export function useOrders() {
   const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
   const { playNotificationSound } = useNotificationSound();
+  
+  // Use refs to avoid stale closures in callbacks
+  const toastRef = useRef(toast);
+  const playNotificationSoundRef = useRef(playNotificationSound);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keep refs updated
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
+  useEffect(() => {
+    playNotificationSoundRef.current = playNotificationSound;
+  }, [playNotificationSound]);
 
   const fetchOrders = useCallback(async () => {
     console.log('📥 Fetching orders...');
@@ -38,7 +51,7 @@ export function useOrders() {
 
     if (error) {
       console.error('❌ Error fetching orders:', error);
-      toast({
+      toastRef.current({
         title: "Error",
         description: "No se pudieron cargar los pedidos",
         variant: "destructive",
@@ -49,7 +62,7 @@ export function useOrders() {
     console.log(`✅ Fetched ${data.length} orders`);
     setOrders(data.map(d => mapToOrder(d as Record<string, unknown>)));
     setLoading(false);
-  }, [toast]);
+  }, []);
 
   const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
     const { error } = await supabase
@@ -84,12 +97,7 @@ export function useOrders() {
     console.log('📡 Setting up realtime subscription...');
     
     const channel = supabase
-      .channel('orders-realtime', {
-        config: {
-          broadcast: { self: true },
-          presence: { key: '' },
-        }
-      })
+      .channel('orders-realtime')
       .on(
         'postgres_changes',
         {
@@ -112,9 +120,9 @@ export function useOrders() {
               return [newOrder, ...prev];
             });
             
-            playNotificationSound();
+            playNotificationSoundRef.current();
             
-            toast({
+            toastRef.current({
               title: "🔔 Nuevo pedido",
               description: `Pedido recibido: ${newOrder.lugar_entrega}`,
             });
@@ -167,7 +175,7 @@ export function useOrders() {
       });
 
     channelRef.current = channel;
-  }, [toast, playNotificationSound]);
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -176,11 +184,8 @@ export function useOrders() {
     // Handle visibility change for reconnection
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('👁️ Tab visible, checking connection...');
-        fetchOrders(); // Refresh data when tab becomes visible
-        if (!isConnected) {
-          setupRealtimeSubscription();
-        }
+        console.log('👁️ Tab visible, refreshing data...');
+        fetchOrders();
       }
     };
 
@@ -198,7 +203,7 @@ export function useOrders() {
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [fetchOrders, setupRealtimeSubscription, isConnected]);
+  }, [fetchOrders, setupRealtimeSubscription]);
 
   const isOrderRecent = (order: Order) => {
     const now = new Date();
