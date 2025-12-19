@@ -217,6 +217,12 @@ export function useOrders() {
     fetchOrders();
     setupRealtimeSubscription();
 
+    // Polling every 30 seconds as fallback for realtime
+    const pollInterval = setInterval(() => {
+      console.log('🔄 Polling for new orders (30s fallback)...');
+      fetchOrders();
+    }, 30000);
+
     // Handle visibility change for reconnection
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -230,6 +236,7 @@ export function useOrders() {
     return () => {
       console.log('🧹 Cleaning up useOrders...');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
       
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
