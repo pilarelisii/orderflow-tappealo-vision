@@ -68,6 +68,11 @@ export function useOrders() {
   }, []);
 
   const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
+    // Optimistic update - update local state immediately
+    setOrders(prev => 
+      prev.map(o => o.id === order.id ? { ...o, status: newStatus } : o)
+    );
+
     const { error } = await supabase
       .from('orders')
       .update({ status: newStatus })
@@ -75,6 +80,10 @@ export function useOrders() {
 
     if (error) {
       console.error('Error updating order:', error);
+      // Revert optimistic update on error
+      setOrders(prev => 
+        prev.map(o => o.id === order.id ? order : o)
+      );
       toast({
         title: "Error",
         description: "No se pudo actualizar el pedido",
