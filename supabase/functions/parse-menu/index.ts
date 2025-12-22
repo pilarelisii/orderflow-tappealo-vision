@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,24 +31,51 @@ serve(async (req) => {
       );
     }
 
-    if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY is not configured');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY is not configured');
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        JSON.stringify({ error: 'Lovable API key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Processing menu image with OpenAI Vision...');
+    console.log('Processing menu with Lovable AI Gateway (Gemini)...');
+    console.log('MIME type received:', mimeType);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Build the content array for the API
+    const userContent: any[] = [
+      {
+        type: 'text',
+        text: 'Analiza esta imagen de menú y extrae todos los productos con sus precios y categorías:'
+      }
+    ];
+
+    // For PDFs, we need to send as file, for images we send as image_url
+    if (mimeType === 'application/pdf') {
+      userContent.push({
+        type: 'file',
+        file: {
+          filename: 'menu.pdf',
+          file_data: `data:${mimeType};base64,${imageBase64}`
+        }
+      });
+    } else {
+      userContent.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+        }
+      });
+    }
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -79,18 +106,7 @@ NO incluyas texto adicional, solo el JSON.`
           },
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Analiza esta imagen de menú y extrae todos los productos con sus precios y categorías:'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
-                }
-              }
-            ]
+            content: userContent
           }
         ],
         max_tokens: 4096,
@@ -100,9 +116,9 @@ NO incluyas texto adicional, solo el JSON.`
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
+      console.error('Lovable AI Gateway error:', response.status, errorText);
       return new Response(
-        JSON.stringify({ error: 'Error al procesar imagen con OpenAI' }),
+        JSON.stringify({ error: 'Error al procesar menú con IA', details: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -111,14 +127,14 @@ NO incluyas texto adicional, solo el JSON.`
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      console.error('No content in OpenAI response');
+      console.error('No content in AI response');
       return new Response(
         JSON.stringify({ error: 'No se pudo extraer información del menú' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('OpenAI response:', content);
+    console.log('AI response:', content);
 
     // Parse the JSON response
     let parsedProducts: { products: DetectedProduct[] };
@@ -131,9 +147,9 @@ NO incluyas texto adicional, solo el JSON.`
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
-      console.error('Error parsing OpenAI response:', parseError);
+      console.error('Error parsing AI response:', parseError);
       return new Response(
-        JSON.stringify({ error: 'Error al parsear respuesta de OpenAI', raw: content }),
+        JSON.stringify({ error: 'Error al parsear respuesta de IA', raw: content }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
