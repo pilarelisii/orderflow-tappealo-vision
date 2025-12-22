@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2, Star } from "lucide-react";
 import { toast } from "sonner";
 import { convertToWebP, isImageFile, needsConversion } from "@/lib/imageUtils";
 import {
@@ -47,6 +47,7 @@ interface Product {
   quantity: number;
   image_url: string | null;
   venue_id: string;
+  featured: boolean;
 }
 
 interface EditedProduct {
@@ -157,6 +158,30 @@ export function StockManagement() {
     }
 
     toast.success(newEnabled ? 'Producto activado' : 'Producto desactivado');
+  };
+
+  const toggleFeatured = async (id: number, currentFeatured: boolean) => {
+    const newFeatured = !currentFeatured;
+    
+    setProducts(prev => prev.map(p => 
+      p.id === id ? { ...p, featured: newFeatured } : p
+    ));
+
+    const { error } = await supabase
+      .from('products')
+      .update({ featured: newFeatured })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating featured:', error);
+      toast.error('Error al actualizar destacado');
+      setProducts(prev => prev.map(p => 
+        p.id === id ? { ...p, featured: currentFeatured } : p
+      ));
+      return;
+    }
+
+    toast.success(newFeatured ? 'Producto destacado' : 'Producto no destacado');
   };
 
   const updateQuantity = async (id: number, quantity: number) => {
@@ -570,6 +595,20 @@ export function StockManagement() {
                         onCheckedChange={() => toggleProduct(product.id, product.enabled)}
                         disabled={isEditMode}
                       />
+                      
+                      {/* Featured toggle */}
+                      <button
+                        onClick={() => toggleFeatured(product.id, product.featured)}
+                        disabled={isEditMode}
+                        className={`p-1.5 rounded-md transition-colors ${
+                          product.featured 
+                            ? 'text-yellow-500 bg-yellow-500/10 hover:bg-yellow-500/20' 
+                            : 'text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        title={product.featured ? 'Quitar de destacados' : 'Marcar como destacado'}
+                      >
+                        <Star className={`h-4 w-4 ${product.featured ? 'fill-current' : ''}`} />
+                      </button>
                       
                       {/* Product image */}
                       <div className="flex-shrink-0">

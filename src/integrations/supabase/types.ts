@@ -72,6 +72,7 @@ export type Database = {
           category: string
           description: string | null
           enabled: boolean | null
+          featured: boolean | null
           id: number
           image_url: string | null
           name: string
@@ -84,6 +85,7 @@ export type Database = {
           category: string
           description?: string | null
           enabled?: boolean | null
+          featured?: boolean | null
           id: number
           image_url?: string | null
           name: string
@@ -96,6 +98,7 @@ export type Database = {
           category?: string
           description?: string | null
           enabled?: boolean | null
+          featured?: boolean | null
           id?: number
           image_url?: string | null
           name?: string
