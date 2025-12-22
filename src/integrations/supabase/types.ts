@@ -159,6 +159,8 @@ export type Database = {
           google_maps_url: string | null
           id: string
           logo_url: string | null
+          mp_access_token: string | null
+          mp_public_key: string | null
           name: string
           phone: string | null
           service_active: boolean
@@ -171,6 +173,8 @@ export type Database = {
           google_maps_url?: string | null
           id?: string
           logo_url?: string | null
+          mp_access_token?: string | null
+          mp_public_key?: string | null
           name: string
           phone?: string | null
           service_active?: boolean
@@ -183,6 +187,8 @@ export type Database = {
           google_maps_url?: string | null
           id?: string
           logo_url?: string | null
+          mp_access_token?: string | null
+          mp_public_key?: string | null
           name?: string
           phone?: string | null
           service_active?: boolean
