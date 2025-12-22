@@ -23,9 +23,9 @@ export function useAuth() {
         setUser(session?.user ?? null);
 
         // Defer venue fetch to avoid deadlock
-        if (session?.user) {
+        if (session?.user?.email) {
           setTimeout(() => {
-            fetchUserVenue(session.user.id);
+            fetchUserVenue(session.user.email!);
           }, 0);
         } else {
           setVenue(null);
@@ -38,8 +38,8 @@ export function useAuth() {
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session?.user) {
-        fetchUserVenue(session.user.id);
+      if (session?.user?.email) {
+        fetchUserVenue(session.user.email);
       } else {
         setLoading(false);
       }
@@ -48,11 +48,14 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserVenue = async (userId: string) => {
+  const fetchUserVenue = async (email: string) => {
+    // Extract venue slug from email prefix (e.g., "tramoya@tappealo.com" -> "tramoya")
+    const slug = email.split('@')[0].toLowerCase();
+    
     const { data, error } = await supabase
       .from('venues')
       .select('id, name, slug, logo_url')
-      .eq('user_id', userId)
+      .eq('slug', slug)
       .maybeSingle();
 
     if (error) {
