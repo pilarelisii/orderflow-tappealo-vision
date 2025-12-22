@@ -166,6 +166,7 @@ export type Database = {
           mp_public_key: string | null
           name: string
           phone: string | null
+          primary_color: string | null
           service_active: boolean
           slug: string
           user_id: string | null
@@ -180,6 +181,7 @@ export type Database = {
           mp_public_key?: string | null
           name: string
           phone?: string | null
+          primary_color?: string | null
           service_active?: boolean
           slug: string
           user_id?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           mp_public_key?: string | null
           name?: string
           phone?: string | null
+          primary_color?: string | null
           service_active?: boolean
           slug?: string
           user_id?: string | null
