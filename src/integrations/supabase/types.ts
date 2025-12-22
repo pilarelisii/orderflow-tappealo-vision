@@ -165,6 +165,7 @@ export type Database = {
           mp_access_token: string | null
           mp_public_key: string | null
           name: string
+          order_api_url: string | null
           phone: string | null
           primary_color: string | null
           service_active: boolean
@@ -180,6 +181,7 @@ export type Database = {
           mp_access_token?: string | null
           mp_public_key?: string | null
           name: string
+          order_api_url?: string | null
           phone?: string | null
           primary_color?: string | null
           service_active?: boolean
@@ -195,6 +197,7 @@ export type Database = {
           mp_access_token?: string | null
           mp_public_key?: string | null
           name?: string
+          order_api_url?: string | null
           phone?: string | null
           primary_color?: string | null
           service_active?: boolean
