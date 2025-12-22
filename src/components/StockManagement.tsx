@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2, Star } from "lucide-react";
+import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2, Star, FileText, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
 import { convertToWebP, isImageFile, needsConversion } from "@/lib/imageUtils";
 import {
@@ -69,6 +69,14 @@ interface NewProduct {
   imagePreview: string | null;
 }
 
+interface DetectedProduct {
+  name: string;
+  description: string | null;
+  price: number;
+  category: string;
+  selected: boolean;
+}
+
 const initialNewProduct: NewProduct = {
   name: '',
   description: '',
@@ -91,6 +99,18 @@ export function StockManagement() {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [venueId, setVenueId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  
+  // Category management
+  const [categoryToEdit, setCategoryToEdit] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  
+  // Menu upload with AI detection
+  const [isMenuUploadOpen, setIsMenuUploadOpen] = useState(false);
+  const [isParsingMenu, setIsParsingMenu] = useState(false);
+  const [detectedProducts, setDetectedProducts] = useState<DetectedProduct[]>([]);
+  const [isImportingProducts, setIsImportingProducts] = useState(false);
+  const menuFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -230,10 +250,9 @@ export function StockManagement() {
     try {
       let processedFile = file;
       
-      // Convert to WebP if it's JPG or PNG
       if (needsConversion(file)) {
         toast.info('Convirtiendo imagen a WebP...');
-        processedFile = await convertToWebP(file, 5120); // 5MB max
+        processedFile = await convertToWebP(file, 5120);
         toast.success('Imagen convertida a WebP');
       }
 
@@ -285,7 +304,6 @@ export function StockManagement() {
       return;
     }
 
-    // Validate all changes
     for (const product of changedProducts) {
       const edited = editedProducts[product.id];
       if (!edited.name.trim()) {
@@ -313,7 +331,6 @@ export function StockManagement() {
         const edited = editedProducts[product.id];
         let imageUrl = product.image_url;
 
-        // Upload image if there's a new one
         if (edited.imageFile) {
           const fileExt = edited.imageFile.name.split('.').pop() || 'webp';
           const fileName = `${product.venue_id}/${product.id}-${Date.now()}.${fileExt}`;
@@ -348,7 +365,6 @@ export function StockManagement() {
         if (error) throw error;
       }
 
-      // Update local state
       setProducts(prev => prev.map(p => {
         const edited = editedProducts[p.id];
         if (edited && changedProducts.find(cp => cp.id === p.id)) {
@@ -387,10 +403,9 @@ export function StockManagement() {
     try {
       let processedFile = file;
       
-      // Convert to WebP if it's JPG or PNG
       if (needsConversion(file)) {
         toast.info('Convirtiendo imagen a WebP...');
-        processedFile = await convertToWebP(file, 5120); // 5MB max
+        processedFile = await convertToWebP(file, 5120);
         toast.success('Imagen convertida a WebP');
       }
 
@@ -429,7 +444,6 @@ export function StockManagement() {
     setIsAddingProduct(true);
 
     try {
-      // Get max ID for this venue to generate new ID
       const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
       const newId = maxId + 1;
 
@@ -508,6 +522,177 @@ export function StockManagement() {
     }
   };
 
+  // Category management functions
+  const renameCategory = async () => {
+    if (!categoryToEdit || !newCategoryName.trim()) {
+      toast.error('El nombre de la categoría es requerido');
+      return;
+    }
+
+    const upperCaseName = newCategoryName.trim().toUpperCase();
+    
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ category: upperCaseName })
+        .eq('category', categoryToEdit)
+        .eq('venue_id', venueId);
+
+      if (error) throw error;
+
+      setProducts(prev => prev.map(p => 
+        p.category === categoryToEdit ? { ...p, category: upperCaseName } : p
+      ));
+      
+      toast.success(`Categoría renombrada a "${upperCaseName}"`);
+      setCategoryToEdit(null);
+      setNewCategoryName("");
+    } catch (error) {
+      console.error('Error renaming category:', error);
+      toast.error('Error al renombrar categoría');
+    }
+  };
+
+  const deleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('category', categoryToDelete)
+        .eq('venue_id', venueId);
+
+      if (error) throw error;
+
+      setProducts(prev => prev.filter(p => p.category !== categoryToDelete));
+      toast.success(`Categoría "${categoryToDelete}" y sus productos eliminados`);
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast.error('Error al eliminar categoría');
+    } finally {
+      setCategoryToDelete(null);
+    }
+  };
+
+  // Menu upload with AI detection
+  const handleMenuFileSelect = async (file: File) => {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Solo se permiten archivos JPG, PNG o PDF');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('El archivo no puede superar 20MB');
+      return;
+    }
+
+    setIsParsingMenu(true);
+    setDetectedProducts([]);
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke('parse-menu', {
+        body: { 
+          imageBase64: base64,
+          mimeType: file.type
+        }
+      });
+
+      if (error) {
+        console.error('Error calling parse-menu:', error);
+        toast.error('Error al procesar el menú');
+        return;
+      }
+
+      if (data.error) {
+        console.error('parse-menu error:', data.error);
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.products && data.products.length > 0) {
+        setDetectedProducts(data.products.map((p: any) => ({ ...p, selected: true })));
+        toast.success(`Se detectaron ${data.products.length} productos`);
+      } else {
+        toast.warning('No se detectaron productos en la imagen');
+      }
+    } catch (error) {
+      console.error('Error processing menu:', error);
+      toast.error('Error al procesar el menú');
+    } finally {
+      setIsParsingMenu(false);
+    }
+  };
+
+  const toggleDetectedProduct = (index: number) => {
+    setDetectedProducts(prev => prev.map((p, i) => 
+      i === index ? { ...p, selected: !p.selected } : p
+    ));
+  };
+
+  const importDetectedProducts = async () => {
+    const selectedProducts = detectedProducts.filter(p => p.selected);
+    
+    if (selectedProducts.length === 0) {
+      toast.error('Selecciona al menos un producto para importar');
+      return;
+    }
+    if (!venueId) {
+      toast.error('Error: venue no encontrado');
+      return;
+    }
+
+    setIsImportingProducts(true);
+
+    try {
+      const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
+      
+      const newProducts = selectedProducts.map((p, index) => ({
+        id: maxId + index + 1,
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        category: p.category,
+        quantity: 0,
+        enabled: true,
+        venue_id: venueId,
+        image_url: null,
+      }));
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert(newProducts)
+        .select();
+
+      if (error) throw error;
+
+      setProducts(prev => [...prev, ...(data || [])].sort((a, b) => 
+        a.category.localeCompare(b.category) || a.id - b.id
+      ));
+      
+      toast.success(`${selectedProducts.length} productos importados`);
+      setIsMenuUploadOpen(false);
+      setDetectedProducts([]);
+    } catch (error) {
+      console.error('Error importing products:', error);
+      toast.error('Error al importar productos');
+    } finally {
+      setIsImportingProducts(false);
+    }
+  };
+
   const getProductsByCategory = (category: string) => {
     return products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
   };
@@ -557,6 +742,14 @@ export function StockManagement() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setIsMenuUploadOpen(true)}
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                Importar Menú
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={enterEditMode}
               >
                 <Pencil className="h-4 w-4 mr-1" />
@@ -578,9 +771,40 @@ export function StockManagement() {
         <Accordion type="multiple" defaultValue={categories} className="w-full">
           {categories.map((category) => (
             <AccordionItem key={category} value={category}>
-              <AccordionTrigger className="text-base font-semibold px-1">
-                {category} ({getProductsByCategory(category).length})
-              </AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <AccordionTrigger className="text-base font-semibold px-1 flex-1">
+                  {category} ({getProductsByCategory(category).length})
+                </AccordionTrigger>
+                {!isEditMode && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCategoryToEdit(category);
+                        setNewCategoryName(category);
+                      }}
+                      title="Renombrar categoría"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCategoryToDelete(category);
+                      }}
+                      title="Eliminar categoría"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
               <AccordionContent>
                 <div className="space-y-3">
                   {getProductsByCategory(category).map((product) => (
@@ -873,6 +1097,201 @@ export function StockManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rename Category Dialog */}
+      <Dialog open={!!categoryToEdit} onOpenChange={(open) => !open && setCategoryToEdit(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renombrar Categoría</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Nuevo nombre</Label>
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Nombre de la categoría"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCategoryToEdit(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={renameCategory}>
+                <Save className="h-4 w-4 mr-1" />
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Category Confirmation Dialog */}
+      <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente la categoría "{categoryToDelete}" y todos sus productos ({getProductsByCategory(categoryToDelete || '').length} productos). Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteCategory}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Menu Upload Dialog */}
+      <Dialog open={isMenuUploadOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsMenuUploadOpen(false);
+          setDetectedProducts([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Importar Menú con IA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {detectedProducts.length === 0 ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Sube una imagen o PDF de tu menú y la IA detectará automáticamente los productos con sus precios y categorías.
+                </p>
+                <input
+                  ref={menuFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleMenuFileSelect(file);
+                  }}
+                />
+                <div
+                  onClick={() => !isParsingMenu && menuFileInputRef.current?.click()}
+                  className={`w-full h-48 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center overflow-hidden bg-muted transition-colors ${
+                    isParsingMenu ? 'cursor-wait' : 'cursor-pointer hover:bg-muted/80'
+                  }`}
+                >
+                  {isParsingMenu ? (
+                    <div className="text-center">
+                      <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
+                      <p className="text-sm text-muted-foreground mt-3">Analizando menú con IA...</p>
+                      <p className="text-xs text-muted-foreground mt-1">Esto puede tomar unos segundos</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <FileText className="h-10 w-10 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mt-3">Click para subir imagen o PDF del menú</p>
+                      <p className="text-xs text-muted-foreground mt-1">JPG, PNG o PDF (máx. 20MB)</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Se detectaron {detectedProducts.length} productos. Selecciona los que deseas importar:
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDetectedProducts(prev => prev.map(p => ({ ...p, selected: true })))}
+                    >
+                      Seleccionar todos
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDetectedProducts(prev => prev.map(p => ({ ...p, selected: false })))}
+                    >
+                      Deseleccionar todos
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="max-h-96 overflow-y-auto space-y-2 border rounded-lg p-3">
+                  {detectedProducts.map((product, index) => (
+                    <div
+                      key={index}
+                      onClick={() => toggleDetectedProduct(index)}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        product.selected 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border bg-card hover:bg-muted'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        product.selected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                      }`}>
+                        {product.selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground truncate">{product.name}</span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                            {product.category}
+                          </span>
+                        </div>
+                        {product.description && (
+                          <p className="text-sm text-muted-foreground truncate">{product.description}</p>
+                        )}
+                      </div>
+                      <span className="font-semibold text-foreground">${product.price}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDetectedProducts([]);
+                    }}
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    Subir otro menú
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsMenuUploadOpen(false);
+                        setDetectedProducts([]);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={importDetectedProducts}
+                      disabled={isImportingProducts || detectedProducts.filter(p => p.selected).length === 0}
+                    >
+                      {isImportingProducts ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-1" />
+                      )}
+                      Importar {detectedProducts.filter(p => p.selected).length} productos
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
