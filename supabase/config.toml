@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.parse-menu]
 verify_jwt = false
+
+[functions.update-mp-tokens]
+verify_jwt = false
