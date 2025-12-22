@@ -110,10 +110,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch products for this venue
+    // Fetch products for this venue (including featured field)
     const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, name, description, price, category, enabled, quantity, image_url')
+      .select('id, name, description, price, category, enabled, quantity, image_url, featured')
       .eq('venue_id', venue.id)
       .order('category')
       .order('id');
@@ -125,6 +125,14 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully fetched ${products?.length || 0} products for ${venue.name}`);
 
+    // Extract unique categories sorted alphabetically
+    const categories = [...new Set(products?.map(p => p.category) || [])].sort();
+
+    // Filter featured products (enabled and featured)
+    const featured_products = products?.filter(p => p.featured && p.enabled) || [];
+
+    console.log(`Categories: ${categories.length}, Featured: ${featured_products.length}`);
+
     // Build response with optional QR info and venue commerce info
     const response: Record<string, unknown> = { 
       venue: { 
@@ -135,6 +143,8 @@ Deno.serve(async (req) => {
         phone: venue.phone
       },
       service: 'enabled',
+      categories,
+      featured_products,
       products 
     };
 
