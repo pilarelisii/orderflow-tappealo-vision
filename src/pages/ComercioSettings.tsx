@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Store, MapPin, Phone } from "lucide-react";
+import { Loader2, ArrowLeft, Store, MapPin, Phone, CreditCard, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,9 @@ const ComercioSettings = () => {
   const [loading, setLoading] = useState(true);
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
+  const [mpPublicKey, setMpPublicKey] = useState("");
+  const [mpAccessToken, setMpAccessToken] = useState("");
+  const [showAccessToken, setShowAccessToken] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -30,13 +33,15 @@ const ComercioSettings = () => {
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('google_maps_url, phone')
+          .select('google_maps_url, phone, mp_public_key, mp_access_token')
           .eq('id', venue.id)
           .single();
 
         if (error) throw error;
         setGoogleMapsUrl(data.google_maps_url || "");
         setVenuePhone(data.phone || "");
+        setMpPublicKey(data.mp_public_key || "");
+        setMpAccessToken(data.mp_access_token || "");
       } catch (error) {
         console.error('Error fetching venue data:', error);
         toast.error('Error al cargar los datos del comercio');
@@ -59,7 +64,9 @@ const ComercioSettings = () => {
         .from('venues')
         .update({ 
           google_maps_url: googleMapsUrl || null, 
-          phone: venuePhone || null 
+          phone: venuePhone || null,
+          mp_public_key: mpPublicKey || null,
+          mp_access_token: mpAccessToken || null
         })
         .eq('id', venue.id);
 
@@ -141,15 +148,73 @@ const ComercioSettings = () => {
                 className="max-w-xs"
               />
             </div>
-
-            <Button 
-              onClick={handleSave} 
-              disabled={saving}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Guardar
-            </Button>
           </div>
+        </div>
+
+        {/* Mercado Pago Integration */}
+        <div className="bg-card border border-border rounded-lg p-6 mt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <CreditCard className="h-6 w-6 text-primary" />
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Mercado Pago</h2>
+              <p className="text-sm text-muted-foreground">Credenciales para procesar pagos</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="mp-public-key">Public Key</Label>
+              <Input
+                id="mp-public-key"
+                placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                value={mpPublicKey}
+                onChange={(e) => setMpPublicKey(e.target.value)}
+                className="max-w-xl font-mono text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="mp-access-token">Access Token</Label>
+              <div className="relative max-w-xl">
+                <Input
+                  id="mp-access-token"
+                  type={showAccessToken ? "text" : "password"}
+                  placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={mpAccessToken}
+                  onChange={(e) => setMpAccessToken(e.target.value)}
+                  className="font-mono text-sm pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAccessToken(!showAccessToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showAccessToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Encontrá tus credenciales en{" "}
+                <a 
+                  href="https://www.mercadopago.com.ar/developers/panel/app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Mercado Pago Developers
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <Button 
+            onClick={handleSave} 
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Guardar
+          </Button>
         </div>
       </main>
     </div>
