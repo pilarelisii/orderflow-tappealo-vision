@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     // First get the venue by slug with all commerce info
     const { data: venue, error: venueError } = await supabase
       .from('venues')
-      .select('id, name, enabled, service_active, logo_url, google_maps_url, phone')
+      .select('id, name, enabled, service_active, logo_url, google_maps_url, phone, mp_public_key')
       .eq('slug', venueSlug)
       .eq('enabled', true)
       .maybeSingle();
@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
             name: venue.name,
             logo_url: venue.logo_url,
             google_maps_url: venue.google_maps_url,
-            phone: venue.phone
+            phone: venue.phone,
+            mp_public_key: venue.mp_public_key
           },
           service: 'disabled',
           message: 'El local está cerrado, no se pueden realizar pedidos',
@@ -140,7 +141,8 @@ Deno.serve(async (req) => {
         name: venue.name,
         logo_url: venue.logo_url,
         google_maps_url: venue.google_maps_url,
-        phone: venue.phone
+        phone: venue.phone,
+        mp_public_key: venue.mp_public_key
       },
       service: 'enabled',
       categories,
