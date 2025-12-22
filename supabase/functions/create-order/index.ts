@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     // Get venue by slug
     const { data: venue, error: venueError } = await supabase
       .from('venues')
-      .select('id, name, enabled')
+      .select('id, name, enabled, order_api_url')
       .eq('slug', payload.venue)
       .eq('enabled', true)
       .maybeSingle()
@@ -119,6 +119,35 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Order created successfully for ${venue.name}: ${data.id}`)
+
+    // If venue has order_api_url configured, send POST with order data
+    if (venue.order_api_url) {
+      console.log(`Sending order to webhook: ${venue.order_api_url}`)
+      
+      const webhookPayload = {
+        order_id: data.id,
+        venue_id: venue.id,
+        venue_name: venue.name,
+        items: data.items,
+        total: data.total,
+        lugar_entrega: data.lugar_entrega,
+        comentarios_generales: data.comentarios_generales,
+        telefono: data.telefono,
+        nombre: data.nombre,
+        payment_method: data.payment_method,
+        status: data.status,
+        created_at: data.created_at
+      }
+
+      // Send webhook in background (fire and forget)
+      fetch(venue.order_api_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookPayload)
+      })
+      .then(res => console.log(`Webhook response status: ${res.status}`))
+      .catch(err => console.error(`Webhook error: ${err.message}`))
+    }
 
     return new Response(
       JSON.stringify({ success: true, order: data }),
