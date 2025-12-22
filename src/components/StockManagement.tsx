@@ -204,23 +204,6 @@ export function StockManagement() {
     toast.success(newFeatured ? 'Producto destacado' : 'Producto no destacado');
   };
 
-  const updateQuantity = async (id: number, quantity: number) => {
-    const safeQuantity = Math.max(0, quantity);
-    
-    setProducts(prev => prev.map(p => 
-      p.id === id ? { ...p, quantity: safeQuantity } : p
-    ));
-
-    const { error } = await supabase
-      .from('products')
-      .update({ quantity: safeQuantity })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating quantity:', error);
-      toast.error('Error al actualizar cantidad');
-    }
-  };
 
   const enterEditMode = () => {
     const initialEdits: Record<number, EditedProduct> = {};
@@ -914,17 +897,6 @@ export function StockManagement() {
                           </>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Cant:</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={product.quantity}
-                          onChange={(e) => updateQuantity(product.id, parseInt(e.target.value) || 0)}
-                          className="w-20 h-8 text-center"
-                          disabled={!product.enabled || isEditMode}
-                        />
-                      </div>
                       {isEditMode && (
                         <Button
                           variant="ghost"
@@ -973,29 +945,16 @@ export function StockManagement() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-price">Precio *</Label>
-                <Input
-                  id="new-price"
-                  type="number"
-                  value={newProduct.price || ''}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                  placeholder="0"
-                  min={0}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-quantity">Cantidad inicial</Label>
-                <Input
-                  id="new-quantity"
-                  type="number"
-                  value={newProduct.quantity}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                  placeholder="0"
-                  min={0}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-price">Precio *</Label>
+              <Input
+                id="new-price"
+                type="number"
+                value={newProduct.price || ''}
+                onChange={(e) => setNewProduct(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                placeholder="0"
+                min={0}
+              />
             </div>
 
             <div className="space-y-2">
