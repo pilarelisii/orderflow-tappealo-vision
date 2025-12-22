@@ -9,82 +9,87 @@ import { Loader2, Settings, LogOut, Package, ChevronRight, QrCode, Store, Printe
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-
-const columns: { title: string; status: OrderStatus }[] = [
-  { title: "Pedido Entrante", status: "entrante" },
-  { title: "En Preparación", status: "preparacion" },
-  { title: "Para Retirar", status: "retirar" },
-  { title: "Para Enviar", status: "enviar" },
-  { title: "Terminadas", status: "terminadas" },
-];
-
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+const columns: {
+  title: string;
+  status: OrderStatus;
+}[] = [{
+  title: "Pedido Entrante",
+  status: "entrante"
+}, {
+  title: "En Preparación",
+  status: "preparacion"
+}, {
+  title: "Para Retirar",
+  status: "retirar"
+}, {
+  title: "Para Enviar",
+  status: "enviar"
+}, {
+  title: "Terminadas",
+  status: "terminadas"
+}];
 const statusFlow: OrderStatus[] = ['entrante', 'preparacion', 'retirar', 'enviar', 'terminadas'];
-
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading, venue, signOut } = useAuth();
-  const { loading, orders, getOrdersByStatus, getOrdersByDate, getAvailableDates, updateOrderStatus } = useOrders();
-
+  const {
+    isAuthenticated,
+    loading: authLoading,
+    venue,
+    signOut
+  } = useAuth();
+  const {
+    loading,
+    orders,
+    getOrdersByStatus,
+    getOrdersByDate,
+    getAvailableDates,
+    updateOrderStatus
+  } = useOrders();
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate("/login");
     }
   }, [authLoading, isAuthenticated, navigate]);
-
   const handleLogout = async () => {
-    const { error } = await signOut();
+    const {
+      error
+    } = await signOut();
     if (error) {
       toast.error("Error al cerrar sesión");
     } else {
       navigate("/login");
     }
   };
-
   const handleMoveNext = (order: Order) => {
     const currentIndex = statusFlow.indexOf(order.status);
     if (currentIndex < statusFlow.length - 1) {
       updateOrderStatus(order, statusFlow[currentIndex + 1]);
     }
   };
-
   const handleMovePrev = (order: Order) => {
     const currentIndex = statusFlow.indexOf(order.status);
     if (currentIndex > 0) {
       updateOrderStatus(order, statusFlow[currentIndex - 1]);
     }
   };
-
   if (authLoading || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+    return <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (!isAuthenticated) {
     return null;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img src={tappealoLogo} alt="Tappealo" className="h-10" />
-          {venue && (
-            <div className="border-l border-border pl-4">
+          {venue && <div className="border-l border-border pl-4">
               <p className="font-semibold text-foreground">{venue.name}</p>
               <p className="text-xs text-muted-foreground">/{venue.slug}</p>
-            </div>
-          )}
+            </div>}
         </div>
         
         <div className="flex items-center gap-2">
@@ -99,40 +104,29 @@ const Index = () => {
                 <SheetTitle>Configuración</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                <Link
-                  to="/stock"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
+                <Link to="/stock" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
                   <div className="flex items-center gap-3">
                     <Package className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">Stock de Productos</span>
+                    <span className="font-medium">Menu Digital
+                  </span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-                <Link
-                  to="/qr-settings"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
+                <Link to="/qr-settings" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
                   <div className="flex items-center gap-3">
                     <QrCode className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">QRs</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-                <Link
-                  to="/comercio-settings"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
+                <Link to="/comercio-settings" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
                   <div className="flex items-center gap-3">
                     <Store className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">Comercio</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-                <Link
-                  to="/printer-settings"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
+                <Link to="/printer-settings" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
                   <div className="flex items-center gap-3">
                     <Printer className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">Impresora</span>
@@ -158,30 +152,15 @@ const Index = () => {
       {/* Columns */}
       <main className="px-6 pb-6">
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {columns.map(({ title, status }, index) => (
-            <OrderColumn
-              key={status}
-              title={title}
-              status={status}
-              orders={getOrdersByStatus(status)}
-              allOrders={orders}
-              onMoveNext={handleMoveNext}
-              onMovePrev={handleMovePrev}
-              canMoveNext={index < columns.length - 1}
-              canMovePrev={index > 0}
-              venueName={venue?.name}
-            />
-          ))}
+          {columns.map(({
+          title,
+          status
+        }, index) => <OrderColumn key={status} title={title} status={status} orders={getOrdersByStatus(status)} allOrders={orders} onMoveNext={handleMoveNext} onMovePrev={handleMovePrev} canMoveNext={index < columns.length - 1} canMovePrev={index > 0} venueName={venue?.name} />)}
         </div>
 
         {/* Order History */}
-        <OrderHistory 
-          availableDates={getAvailableDates()} 
-          getOrdersByDate={getOrdersByDate} 
-        />
+        <OrderHistory availableDates={getAvailableDates()} getOrdersByDate={getOrdersByDate} />
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
