@@ -1,8 +1,6 @@
 import { Order, OrderStatus } from "@/types/order";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronRight, ChevronDown, ChevronLeft, MapPin, MessageSquare, Clock, Printer, Phone, CreditCard, Banknote } from "lucide-react";
+import { ChevronRight, ChevronLeft, MapPin, MessageSquare, Clock, Printer, Phone, CreditCard, Banknote } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -53,7 +51,6 @@ export function OrderCard({
   venueName,
   orderNumber
 }: OrderCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -286,56 +283,88 @@ export function OrderCard({
       transform: `translateX(${swipeOffset * 0.5}px)`,
       transition: isSwiping ? 'none' : 'transform 0.3s ease-out'
     }}>
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
-            {/* Order number - displayed above location */}
-            {orderNumber && <div className="text-xs font-light text-muted-foreground tracking-wider mb-1.5">
-                #{orderNumber}
-              </div>}
-            
-            {/* Location first - prominent */}
-            {order.lugar_entrega && <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
-                <MapPin className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-primary">{order.lugar_entrega}</span>
-              </div>}
-            
-            {/* Phone with WhatsApp link */}
-            {order.telefono && <a href={`https://wa.me/${order.telefono.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-2 mb-2 bg-success/10 rounded-md px-2 py-1.5 hover:bg-success/20 transition-colors">
-                <Phone className="w-4 h-4 text-success" />
-                <span className="font-medium text-success text-sm">{order.telefono}</span>
-              </a>}
-            
-            {/* Customer name */}
-            {order.nombre && <div className="flex items-center gap-2 mb-2 bg-secondary rounded-md px-2 py-1.5">
-                <span className="font-medium text-foreground text-sm">{order.nombre}</span>
-              </div>}
-            
-            {/* Payment method */}
-            {order.payment_method && <div className="flex items-center gap-2 mb-2 bg-accent/50 rounded-md px-2 py-1.5">
-                {order.payment_method.toLowerCase().includes('mercado') ? <CreditCard className="w-4 h-4 text-blue-500" /> : <Banknote className="w-4 h-4 text-green-600" />}
-                <span className="font-medium text-foreground text-sm capitalize">{order.payment_method}</span>
-              </div>}
-            
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Clock className="w-3.5 h-3.5" />
-                <span>{timeAgo}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={handlePrint} className="p-1.5 rounded-md hover:bg-secondary transition-colors" title="Imprimir ticket">
-                  <Printer className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-                </button>
-                <span className="text-lg font-bold text-primary">
-                  ${order.total.toLocaleString('es-CL')}
-                </span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-              </div>
-            </div>
-            <p className="text-sm text-foreground truncate">{itemsSummary}</p>
-          </CollapsibleTrigger>
-
+        <div className="p-4">
+          {/* Order number */}
+          {orderNumber && <div className="text-xs font-light text-muted-foreground tracking-wider mb-2">
+              #{orderNumber}
+            </div>}
           
-        </Collapsible>
+          {/* Items + Price - Main section */}
+          <div className="flex justify-between gap-4 mb-3">
+            <div className="flex-1">
+              {order.items.map((item, idx) => (
+                <div key={idx} className="text-base font-semibold text-foreground">
+                  {item.cantidad}x {item.item}
+                </div>
+              ))}
+            </div>
+            <div className="text-xl font-bold text-primary whitespace-nowrap">
+              ${order.total.toLocaleString('es-CL')}
+            </div>
+          </div>
+          
+          {/* Print button + Time */}
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-border">
+            <button 
+              onClick={handlePrint} 
+              disabled={isPrinting}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary hover:bg-secondary/80 transition-colors text-sm"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimir</span>
+            </button>
+            <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{timeAgo}</span>
+            </div>
+          </div>
+          
+          {/* Customer info - Below */}
+          <div className="space-y-1.5">
+            {order.lugar_entrega && (
+              <div className="flex items-center gap-2 text-sm">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="font-medium">{order.lugar_entrega}</span>
+              </div>
+            )}
+            
+            {order.telefono && (
+              <a 
+                href={`https://wa.me/${order.telefono.replace(/\D/g, '')}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                onClick={e => e.stopPropagation()} 
+                className="flex items-center gap-2 text-sm text-success hover:underline"
+              >
+                <Phone className="w-4 h-4" />
+                <span>{order.telefono}</span>
+              </a>
+            )}
+            
+            {order.nombre && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{order.nombre}</span>
+              </div>
+            )}
+            
+            {order.payment_method && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {order.payment_method.toLowerCase().includes('mercado') 
+                  ? <CreditCard className="w-4 h-4 text-blue-500" /> 
+                  : <Banknote className="w-4 h-4 text-green-600" />
+                }
+                <span className="capitalize">{order.payment_method}</span>
+              </div>
+            )}
+            
+            {order.comentarios_generales && (
+              <div className="flex items-start gap-2 text-sm text-muted-foreground mt-2 pt-2 border-t border-border">
+                <MessageSquare className="w-4 h-4 mt-0.5" />
+                <span>{order.comentarios_generales}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </Card>
     </div>;
 }
