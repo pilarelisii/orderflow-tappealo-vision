@@ -27,6 +27,7 @@ const ComercioSettings = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, venue } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [venueName, setVenueName] = useState("");
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
   const [mpPublicKey, setMpPublicKey] = useState("");
@@ -51,11 +52,12 @@ const ComercioSettings = () => {
       try {
         const { data, error } = await supabase
           .from('venues')
-          .select('google_maps_url, phone, mp_public_key, mp_access_token, logo_url, primary_color')
+          .select('name, google_maps_url, phone, mp_public_key, mp_access_token, logo_url, primary_color')
           .eq('id', venue.id)
           .single();
 
         if (error) throw error;
+        setVenueName(data.name || "");
         setGoogleMapsUrl(data.google_maps_url || "");
         setVenuePhone(data.phone || "");
         setMpPublicKey(data.mp_public_key || "");
@@ -139,6 +141,7 @@ const ComercioSettings = () => {
       const { error } = await supabase
         .from('venues')
         .update({ 
+          name: venueName,
           google_maps_url: googleMapsUrl || null, 
           phone: venuePhone || null,
           mp_public_key: mpPublicKey || null,
@@ -204,6 +207,20 @@ const ComercioSettings = () => {
           </div>
 
           <div className="space-y-6">
+            {/* Venue Name */}
+            <div className="space-y-2">
+              <Label htmlFor="venue-name">Nombre del comercio</Label>
+              <Input
+                id="venue-name"
+                placeholder="Mi Comercio"
+                value={venueName}
+                onChange={(e) => setVenueName(e.target.value)}
+                className="max-w-md"
+              />
+              <p className="text-xs text-muted-foreground">
+                Este nombre se mostrará en el menú y en los recibos
+              </p>
+            </div>
             {/* Logo Upload */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">Logo del comercio</Label>
