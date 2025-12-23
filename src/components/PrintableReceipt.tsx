@@ -16,7 +16,7 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
           @media print {
             @page {
               size: 80mm auto;
-              margin: 0;
+              margin: 0mm 2mm;
             }
             body * {
               visibility: hidden;
@@ -28,34 +28,37 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
               position: absolute;
               left: 0;
               top: 0;
-              width: 80mm;
-              padding: 2mm;
+              width: 72mm;
+              max-width: 576px;
+              padding: 2mm 0;
+              margin: 0 auto;
               font-family: 'Courier New', monospace;
-              font-size: 12px;
-              line-height: 1.3;
+              font-size: 11px;
+              line-height: 1.2;
               color: black !important;
               background: white !important;
             }
           }
           .print-receipt {
-            width: 80mm;
-            padding: 2mm;
+            width: 72mm;
+            max-width: 576px;
+            padding: 2mm 0;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.3;
+            font-size: 11px;
+            line-height: 1.2;
             background: white;
             color: black;
           }
           .print-receipt .header {
             text-align: center;
             border-bottom: 1px dashed black;
-            padding-bottom: 4mm;
-            margin-bottom: 4mm;
+            padding-bottom: 3mm;
+            margin-bottom: 3mm;
           }
           .print-receipt .header h1 {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            margin: 0 0 2mm 0;
+            margin: 0 0 1mm 0;
           }
           .print-receipt .header p {
             margin: 0;
@@ -63,11 +66,11 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
           }
           .print-receipt .items {
             border-bottom: 1px dashed black;
-            padding-bottom: 4mm;
-            margin-bottom: 4mm;
+            padding-bottom: 3mm;
+            margin-bottom: 3mm;
           }
           .print-receipt .item {
-            margin-bottom: 3mm;
+            margin-bottom: 2mm;
           }
           .print-receipt .item-header {
             display: flex;
@@ -75,29 +78,30 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
             font-weight: bold;
           }
           .print-receipt .item-desc {
-            font-size: 10px;
-            padding-left: 4mm;
+            font-size: 9px;
+            padding-left: 3mm;
             color: #333;
           }
           .print-receipt .footer {
             text-align: center;
           }
           .print-receipt .total {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             text-align: right;
-            margin: 4mm 0;
+            margin: 3mm 0;
             border-top: 1px solid black;
             padding-top: 2mm;
           }
           .print-receipt .delivery {
-            margin: 3mm 0;
+            margin: 2mm 0;
             padding: 2mm;
             border: 1px solid black;
+            font-size: 10px;
           }
           .print-receipt .comments {
-            font-size: 10px;
-            margin: 3mm 0;
+            font-size: 9px;
+            margin: 2mm 0;
             padding: 2mm;
             background: #f0f0f0;
           }
@@ -126,7 +130,7 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
       <div className="delivery">
         <strong>Entrega:</strong> {order.lugar_entrega}
         {order.telefono && (
-          <div style={{ marginTop: '2mm' }}>
+          <div style={{ marginTop: '1mm' }}>
             <strong>Tel:</strong> {order.telefono}
           </div>
         )}
