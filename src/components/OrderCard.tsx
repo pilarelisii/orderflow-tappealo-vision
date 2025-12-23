@@ -304,7 +304,7 @@ export function OrderCard({
           </div>
           
           {/* Customer info - Bigger text */}
-          <div className="space-y-2 mb-3 pb-3 border-b border-border">
+          <div className="space-y-2 mb-3">
             {order.lugar_entrega && (
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" />
