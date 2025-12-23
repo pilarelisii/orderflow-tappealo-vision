@@ -284,20 +284,10 @@ export function OrderCard({
       transition: isSwiping ? 'none' : 'transform 0.3s ease-out'
     }}>
         <div className="p-4">
-          {/* Order number + Print button */}
-          <div className="flex items-center justify-between mb-2">
-            {orderNumber && <div className="text-xs font-light text-muted-foreground tracking-wider">
-                #{orderNumber}
-              </div>}
-            <button 
-              onClick={handlePrint} 
-              disabled={isPrinting}
-              className="p-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
-              title="Imprimir ticket"
-            >
-              <Printer className="w-6 h-6" />
-            </button>
-          </div>
+          {/* Order number */}
+          {orderNumber && <div className="text-xs font-light text-muted-foreground tracking-wider mb-2">
+              #{orderNumber}
+            </div>}
           
           {/* Items + Price - Main section */}
           <div className="flex justify-between gap-4 mb-3">
@@ -359,10 +349,20 @@ export function OrderCard({
             )}
           </div>
           
-          {/* Time at the bottom */}
-          <div className="flex items-center justify-end gap-1.5 text-muted-foreground text-sm">
-            <Clock className="w-4 h-4" />
-            <span>{timeAgo}</span>
+          {/* Print + Exact time at the bottom */}
+          <div className="flex items-center justify-between text-muted-foreground text-sm pt-2 border-t border-border">
+            <button 
+              onClick={handlePrint} 
+              disabled={isPrinting}
+              className="p-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
+              title="Imprimir ticket"
+            >
+              <Printer className="w-6 h-6" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4" />
+              <span>{new Date(order.created_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
           </div>
         </div>
       </Card>
