@@ -10,7 +10,6 @@ import { useSwipeable } from "react-swipeable";
 import { isQZConnected, printRaw } from "@/lib/qzTray";
 import { generateReceiptCommands } from "@/lib/escpos";
 import { useToast } from "@/hooks/use-toast";
-
 interface OrderCardProps {
   order: Order;
   onMoveNext: (order: Order) => void;
@@ -20,43 +19,64 @@ interface OrderCardProps {
   venueName?: string;
   orderNumber?: string;
 }
-
-const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: string }> = {
-  entrante: { next: 'preparacion', label: 'Preparar' },
-  preparacion: { next: 'retirar', label: 'Listo' },
-  retirar: { next: 'enviar', label: 'Enviar' },
-  enviar: { next: 'terminadas', label: 'Terminar' },
-  terminadas: { next: null, label: '' },
+const statusConfig: Record<OrderStatus, {
+  next: OrderStatus | null;
+  label: string;
+}> = {
+  entrante: {
+    next: 'preparacion',
+    label: 'Preparar'
+  },
+  preparacion: {
+    next: 'retirar',
+    label: 'Listo'
+  },
+  retirar: {
+    next: 'enviar',
+    label: 'Enviar'
+  },
+  enviar: {
+    next: 'terminadas',
+    label: 'Terminar'
+  },
+  terminadas: {
+    next: null,
+    label: ''
+  }
 };
-
-export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName, orderNumber }: OrderCardProps) {
+export function OrderCard({
+  order,
+  onMoveNext,
+  onMovePrev,
+  canMoveNext,
+  canMovePrev,
+  venueName,
+  orderNumber
+}: OrderCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const PRINTER_STORAGE_KEY = 'tappealo_selected_printer';
   const OPEN_DRAWER_KEY = 'tappealo_open_drawer';
-
   const handlePrint = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    
     const selectedPrinter = localStorage.getItem(PRINTER_STORAGE_KEY);
     const openDrawer = localStorage.getItem(OPEN_DRAWER_KEY) === 'true';
-    
+
     // Try QZ Tray first if connected and printer selected
     if (isQZConnected() && selectedPrinter) {
       setIsPrinting(true);
       try {
         const commands = generateReceiptCommands(order, venueName || 'PEDIDO', orderNumber);
         await printRaw(selectedPrinter, commands);
-        
         if (openDrawer) {
           // ESC/POS command to open cash drawer
           await printRaw(selectedPrinter, ['\x1B\x70\x00\x19\x19']);
         }
-        
         toast({
           title: "Impreso",
           description: "Ticket enviado a la impresora"
@@ -68,13 +88,11 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
         setIsPrinting(false);
       }
     }
-    
+
     // Fallback to browser print
     printWithBrowser();
   };
-
   const printWithBrowser = () => {
-    
     // Create a hidden iframe for printing
     const printFrame = document.createElement('iframe');
     printFrame.style.position = 'absolute';
@@ -82,13 +100,10 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
     printFrame.style.height = '0';
     printFrame.style.border = 'none';
     document.body.appendChild(printFrame);
-
     const printDocument = printFrame.contentDocument || printFrame.contentWindow?.document;
     if (!printDocument) return;
-
     printDocument.open();
     const displayOrderNumber = orderNumber || order.id.slice(0, 8).toUpperCase();
-    
     printDocument.write(`
       <!DOCTYPE html>
       <html>
@@ -204,7 +219,6 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
       </html>
     `);
     printDocument.close();
-
     printFrame.contentWindow?.focus();
     printFrame.contentWindow?.print();
 
@@ -213,20 +227,17 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
       document.body.removeChild(printFrame);
     }, 1000);
   };
-  
   const config = statusConfig[order.status];
-  const timeAgo = formatDistanceToNow(new Date(order.created_at), { 
-    addSuffix: true, 
-    locale: es 
+  const timeAgo = formatDistanceToNow(new Date(order.created_at), {
+    addSuffix: true,
+    locale: es
   });
-
   const itemsSummary = order.items.map(i => `${i.cantidad}x ${i.item}`).join(', ');
-
   const handlers = useSwipeable({
-    onSwiping: (e) => {
+    onSwiping: e => {
       const newOffset = e.deltaX;
       // Limit swipe based on direction availability
-      if ((newOffset > 0 && !canMoveNext) || (newOffset < 0 && !canMovePrev)) {
+      if (newOffset > 0 && !canMoveNext || newOffset < 0 && !canMovePrev) {
         setSwipeOffset(newOffset * 0.2); // Resistance effect
       } else {
         setSwipeOffset(newOffset);
@@ -253,87 +264,57 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
     },
     trackMouse: true,
     preventScrollOnSwipe: true,
-    delta: 10,
+    delta: 10
   });
-
   const getSwipeIndicator = () => {
     if (!isSwiping) return null;
     if (swipeOffset > 25 && canMoveNext) {
-      return (
-        <div className="absolute inset-y-0 left-0 w-16 bg-success/30 flex items-center justify-center rounded-l-lg transition-all">
+      return <div className="absolute inset-y-0 left-0 w-16 bg-success/30 flex items-center justify-center rounded-l-lg transition-all">
           <ChevronRight className="w-6 h-6 text-success" />
-        </div>
-      );
+        </div>;
     }
     if (swipeOffset < -25 && canMovePrev) {
-      return (
-        <div className="absolute inset-y-0 right-0 w-16 bg-warning/30 flex items-center justify-center rounded-r-lg transition-all">
+      return <div className="absolute inset-y-0 right-0 w-16 bg-warning/30 flex items-center justify-center rounded-r-lg transition-all">
           <ChevronLeft className="w-6 h-6 text-warning" />
-        </div>
-      );
+        </div>;
     }
     return null;
   };
-
-  return (
-    <div className="relative mb-3" {...handlers}>
+  return <div className="relative mb-3" {...handlers}>
       {getSwipeIndicator()}
-      <Card 
-        className="animate-fade-in hover:shadow-md overflow-hidden"
-        style={{ 
-          transform: `translateX(${swipeOffset * 0.5}px)`,
-          transition: isSwiping ? 'none' : 'transform 0.3s ease-out'
-        }}
-      >
+      <Card className="animate-fade-in hover:shadow-md overflow-hidden" style={{
+      transform: `translateX(${swipeOffset * 0.5}px)`,
+      transition: isSwiping ? 'none' : 'transform 0.3s ease-out'
+    }}>
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
             {/* Order number - displayed above location */}
-            {orderNumber && (
-              <div className="text-xs font-light text-muted-foreground tracking-wider mb-1.5">
+            {orderNumber && <div className="text-xs font-light text-muted-foreground tracking-wider mb-1.5">
                 #{orderNumber}
-              </div>
-            )}
+              </div>}
             
             {/* Location first - prominent */}
-            {order.lugar_entrega && (
-              <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
+            {order.lugar_entrega && <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
                 <MapPin className="w-5 h-5 text-primary" />
                 <span className="font-semibold text-primary">{order.lugar_entrega}</span>
-              </div>
-            )}
+              </div>}
             
             {/* Phone with WhatsApp link */}
-            {order.telefono && (
-              <a 
-                href={`https://wa.me/${order.telefono.replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-2 mb-2 bg-success/10 rounded-md px-2 py-1.5 hover:bg-success/20 transition-colors"
-              >
+            {order.telefono && <a href={`https://wa.me/${order.telefono.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-2 mb-2 bg-success/10 rounded-md px-2 py-1.5 hover:bg-success/20 transition-colors">
                 <Phone className="w-4 h-4 text-success" />
                 <span className="font-medium text-success text-sm">{order.telefono}</span>
-              </a>
-            )}
+              </a>}
             
             {/* Customer name */}
-            {order.nombre && (
-              <div className="flex items-center gap-2 mb-2 bg-secondary rounded-md px-2 py-1.5">
+            {order.nombre && <div className="flex items-center gap-2 mb-2 bg-secondary rounded-md px-2 py-1.5">
                 <span className="font-medium text-foreground text-sm">{order.nombre}</span>
-              </div>
-            )}
+              </div>}
             
             {/* Payment method */}
-            {order.payment_method && (
-              <div className="flex items-center gap-2 mb-2 bg-accent/50 rounded-md px-2 py-1.5">
-                {order.payment_method.toLowerCase().includes('mercado') ? (
-                  <CreditCard className="w-4 h-4 text-blue-500" />
-                ) : (
-                  <Banknote className="w-4 h-4 text-green-600" />
-                )}
+            {order.payment_method && <div className="flex items-center gap-2 mb-2 bg-accent/50 rounded-md px-2 py-1.5">
+                {order.payment_method.toLowerCase().includes('mercado') ? <CreditCard className="w-4 h-4 text-blue-500" /> : <Banknote className="w-4 h-4 text-green-600" />}
                 <span className="font-medium text-foreground text-sm capitalize">{order.payment_method}</span>
-              </div>
-            )}
+              </div>}
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -341,76 +322,20 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 <span>{timeAgo}</span>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={handlePrint}
-                  className="p-1.5 rounded-md hover:bg-secondary transition-colors"
-                  title="Imprimir ticket"
-                >
+                <button onClick={handlePrint} className="p-1.5 rounded-md hover:bg-secondary transition-colors" title="Imprimir ticket">
                   <Printer className="w-4 h-4 text-muted-foreground hover:text-foreground" />
                 </button>
                 <span className="text-lg font-bold text-primary">
                   ${order.total.toLocaleString('es-CL')}
                 </span>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </div>
             </div>
             <p className="text-sm text-foreground truncate">{itemsSummary}</p>
           </CollapsibleTrigger>
 
-          <CollapsibleContent>
-            <div className="px-4 pb-4 space-y-3">
-              <div className="space-y-2">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="bg-secondary/50 rounded-lg p-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                        {item.cantidad}
-                      </span>
-                      <span className="font-semibold text-foreground">{item.item}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {order.comentarios_generales && (
-                <div className="flex items-start gap-2 text-sm bg-accent/50 p-2.5 rounded-lg">
-                  <MessageSquare className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                  <span className="text-foreground">{order.comentarios_generales}</span>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                {canMovePrev && (
-                  <Button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMovePrev(order);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Atrás
-                  </Button>
-                )}
-                {canMoveNext && (
-                  <Button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMoveNext(order);
-                    }}
-                    className="flex-1"
-                    size="sm"
-                  >
-                    {config.label}
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CollapsibleContent>
+          
         </Collapsible>
       </Card>
-    </div>
-  );
+    </div>;
 }
