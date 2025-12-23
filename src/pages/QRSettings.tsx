@@ -38,9 +38,21 @@ interface QRLocation {
   venue_id: string;
   code: string;
   name: string | null;
+  description: string | null;
   delivery_type: string;
   enabled: boolean;
 }
+
+// Generate a URL-safe utm_campaign code from a name
+const generateUtmCampaign = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9]+/g, '_') // Replace non-alphanumeric with underscore
+    .replace(/^_+|_+$/g, '') // Trim underscores
+    .substring(0, 50); // Limit length
+};
 
 const DELIVERY_TYPE_OPTIONS = [
   { value: "en_lugar", label: "En el lugar" },
@@ -58,12 +70,14 @@ const QRSettings = () => {
   const [qrLocations, setQrLocations] = useState<QRLocation[]>([]);
   const [loadingQRs, setLoadingQRs] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [newQRCode, setNewQRCode] = useState("");
+  const [newQRName, setNewQRName] = useState("");
+  const [newQRDescription, setNewQRDescription] = useState("");
   const [newQRDeliveryType, setNewQRDeliveryType] = useState("en_lugar");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addingQR, setAddingQR] = useState(false);
   const [editingQR, setEditingQR] = useState<QRLocation | null>(null);
-  const [editQRCode, setEditQRCode] = useState("");
+  const [editQRName, setEditQRName] = useState("");
+  const [editQRDescription, setEditQRDescription] = useState("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [menuBaseUrl, setMenuBaseUrl] = useState(() => {
@@ -210,7 +224,9 @@ const QRSettings = () => {
   };
 
   const handleAddQR = async () => {
-    if (!venue?.id || !newQRCode.trim()) return;
+    if (!venue?.id || !newQRName.trim()) return;
+    
+    const utmCampaign = generateUtmCampaign(newQRName.trim());
     
     setAddingQR(true);
     try {
@@ -218,7 +234,9 @@ const QRSettings = () => {
         .from('qr_locations')
         .insert({
           venue_id: venue.id,
-          code: newQRCode.trim().toLowerCase(),
+          code: utmCampaign,
+          name: newQRName.trim(),
+          description: newQRDescription.trim() || null,
           delivery_type: newQRDeliveryType,
         })
         .select()
@@ -226,15 +244,16 @@ const QRSettings = () => {
 
       if (error) {
         if (error.code === '23505') {
-          toast.error('Ya existe un QR con ese código');
+          toast.error('Ya existe un QR con ese nombre');
         } else {
           throw error;
         }
         return;
       }
 
-      setQrLocations(prev => [...prev, data].sort((a, b) => a.code.localeCompare(b.code)));
-      setNewQRCode("");
+      setQrLocations(prev => [...prev, data].sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code)));
+      setNewQRName("");
+      setNewQRDescription("");
       setNewQRDeliveryType("en_lugar");
       setDialogOpen(false);
       toast.success('QR agregado');
@@ -288,23 +307,30 @@ const QRSettings = () => {
 
   const openEditDialog = (qr: QRLocation) => {
     setEditingQR(qr);
-    setEditQRCode(qr.code);
+    setEditQRName(qr.name || '');
+    setEditQRDescription(qr.description || '');
     setEditDialogOpen(true);
   };
 
   const handleEditQR = async () => {
-    if (!editingQR || !editQRCode.trim()) return;
+    if (!editingQR || !editQRName.trim()) return;
+    
+    const newUtmCampaign = generateUtmCampaign(editQRName.trim());
     
     setSavingEdit(true);
     try {
       const { error } = await supabase
         .from('qr_locations')
-        .update({ code: editQRCode.trim().toLowerCase() })
+        .update({ 
+          name: editQRName.trim(),
+          description: editQRDescription.trim() || null,
+          code: newUtmCampaign,
+        })
         .eq('id', editingQR.id);
 
       if (error) {
         if (error.code === '23505') {
-          toast.error('Ya existe un QR con ese código');
+          toast.error('Ya existe un QR con ese nombre');
         } else {
           throw error;
         }
@@ -312,8 +338,13 @@ const QRSettings = () => {
       }
 
       setQrLocations(prev => 
-        prev.map(qr => qr.id === editingQR.id ? { ...qr, code: editQRCode.trim().toLowerCase() } : qr)
-          .sort((a, b) => a.code.localeCompare(b.code))
+        prev.map(qr => qr.id === editingQR.id ? { 
+          ...qr, 
+          name: editQRName.trim(),
+          description: editQRDescription.trim() || null,
+          code: newUtmCampaign,
+        } : qr)
+          .sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code))
       );
       setEditDialogOpen(false);
       setEditingQR(null);
@@ -441,14 +472,31 @@ const QRSettings = () => {
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="qr-code">Código (utm_campaign)</Label>
+                    <Label htmlFor="qr-name">Nombre</Label>
                     <Input
-                      id="qr-code"
-                      placeholder="ej: mesa1, clinica1, natatorio1"
-                      value={newQRCode}
-                      onChange={(e) => setNewQRCode(e.target.value)}
+                      id="qr-name"
+                      placeholder="ej: Mesa 1, Clínica Principal, Natatorio"
+                      value={newQRName}
+                      onChange={(e) => setNewQRName(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Este nombre identificará el QR en las comandas
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="qr-description">Descripción (opcional)</Label>
+                    <Input
+                      id="qr-description"
+                      placeholder="ej: Mesa cerca de la ventana"
+                      value={newQRDescription}
+                      onChange={(e) => setNewQRDescription(e.target.value)}
                     />
                   </div>
+                  {newQRName.trim() && (
+                    <p className="text-xs text-muted-foreground">
+                      utm_campaign: <code className="bg-muted px-1 rounded">{generateUtmCampaign(newQRName)}</code>
+                    </p>
+                  )}
                   <div className="space-y-2">
                     <Label>Tipo de entrega</Label>
                     <Select value={newQRDeliveryType} onValueChange={setNewQRDeliveryType}>
@@ -466,7 +514,7 @@ const QRSettings = () => {
                   </div>
                   <Button 
                     onClick={handleAddQR} 
-                    disabled={!newQRCode.trim() || addingQR}
+                    disabled={!newQRName.trim() || addingQR}
                     className="w-full"
                   >
                     {addingQR ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -484,20 +532,34 @@ const QRSettings = () => {
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-qr-code">Código (utm_campaign)</Label>
+                    <Label htmlFor="edit-qr-name">Nombre</Label>
                     <Input
-                      id="edit-qr-code"
-                      placeholder="ej: mesa1, clinica1, natatorio1"
-                      value={editQRCode}
-                      onChange={(e) => setEditQRCode(e.target.value)}
+                      id="edit-qr-name"
+                      placeholder="ej: Mesa 1, Clínica Principal, Natatorio"
+                      value={editQRName}
+                      onChange={(e) => setEditQRName(e.target.value)}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-qr-description">Descripción (opcional)</Label>
+                    <Input
+                      id="edit-qr-description"
+                      placeholder="ej: Mesa cerca de la ventana"
+                      value={editQRDescription}
+                      onChange={(e) => setEditQRDescription(e.target.value)}
+                    />
+                  </div>
+                  {editQRName.trim() && (
+                    <p className="text-xs text-muted-foreground">
+                      utm_campaign: <code className="bg-muted px-1 rounded">{generateUtmCampaign(editQRName)}</code>
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">
-                    Nueva URL: {buildQRUrl(editQRCode)}
+                    Nueva URL: {buildQRUrl(generateUtmCampaign(editQRName))}
                   </p>
                   <Button 
                     onClick={handleEditQR} 
-                    disabled={!editQRCode.trim() || savingEdit}
+                    disabled={!editQRName.trim() || savingEdit}
                     className="w-full"
                   >
                     {savingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -523,9 +585,10 @@ const QRSettings = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">QR Code</TableHead>
-                    <TableHead>URL</TableHead>
+                    <TableHead className="w-[150px]">Nombre</TableHead>
+                    <TableHead className="w-[120px]">utm_campaign</TableHead>
                     <TableHead className="w-[180px]">Tipo</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                     <TableHead className="w-[50px]"></TableHead>
@@ -534,25 +597,16 @@ const QRSettings = () => {
                 <TableBody>
                   {qrLocations.map((qr) => (
                     <TableRow key={qr.id}>
-                      <TableCell className="font-medium">{qr.code}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground truncate max-w-[300px]">
-                            {buildQRUrl(qr.code)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0"
-                            onClick={() => copyToClipboard(qr.code, qr.id)}
-                          >
-                            {copiedId === qr.id ? (
-                              <Check className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
+                        <div>
+                          <span className="font-medium">{qr.name || qr.code}</span>
+                          {qr.description && (
+                            <p className="text-xs text-muted-foreground">{qr.description}</p>
+                          )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-1 py-0.5 rounded">{qr.code}</code>
                       </TableCell>
                       <TableCell>
                         <Select
@@ -570,6 +624,21 @@ const QRSettings = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => copyToClipboard(qr.code, qr.id)}
+                          title="Copiar URL"
+                        >
+                          {copiedId === qr.id ? (
+                            <Check className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
                       </TableCell>
                       <TableCell>
                         <Button
