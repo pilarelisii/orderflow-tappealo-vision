@@ -351,7 +351,6 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 <span className="text-lg font-bold text-primary">
                   ${order.total.toLocaleString('es-CL')}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </div>
             </div>
             <p className="text-sm text-foreground truncate">{itemsSummary}</p>
