@@ -282,7 +282,7 @@ const QRSettings = () => {
     }
   };
 
-  const downloadQRCode = async (code: string) => {
+  const downloadQRCode = async (code: string, qrName: string) => {
     const url = buildQRUrl(code);
     try {
       const dataUrl = await QRCodeLib.toDataURL(url, {
@@ -294,8 +294,12 @@ const QRSettings = () => {
         },
       });
       
+      const venueName = venue?.name || 'VENUE';
+      const sanitizedQRName = qrName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const sanitizedVenueName = venueName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      
       const link = document.createElement('a');
-      link.download = `qr-${code}.png`;
+      link.download = `QR_${sanitizedQRName}_${sanitizedVenueName}.png`;
       link.href = dataUrl;
       link.click();
       toast.success('QR descargado');
@@ -645,7 +649,7 @@ const QRSettings = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => downloadQRCode(qr.code)}
+                          onClick={() => downloadQRCode(qr.code, qr.name || qr.code)}
                           title="Descargar QR"
                         >
                           <Download className="h-4 w-4" />
