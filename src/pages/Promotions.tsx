@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import tappealoLogo from "@/assets/tappealo-logo.png";
+import PromosManagement from "@/components/PromosManagement";
 
-const Stock = () => {
+const Promotions = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading, venue } = useAuth();
 
@@ -49,12 +50,12 @@ const Stock = () => {
 
       <main className="px-6 py-6">
         <h1 className="text-2xl font-bold text-foreground mb-6">
-          Menu 
+          Productos en promocion
         </h1>
-        <StockManagement />
+        <PromosManagement />
       </main>
     </div>
   );
 };
 
-export default Stock;
+export default Promotions;

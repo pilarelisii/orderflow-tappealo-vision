@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,16 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import {
-  Loader2,
-  Pencil,
-  Save,
-  X,
-  Upload,
-  ImageIcon,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Loader2, Pencil, Save, X, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -43,41 +34,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
+import { useCategories } from "@/hooks/useCategories";
+import { CategoriesModal } from "@/components/CategoriesModal";
 import { useAuth } from "@/hooks/useAuth";
-import { db, storage } from "@/integrations/firebase/client";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  setDoc,
-  deleteDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useProducts } from "@/hooks/useProducts";
+import { Product } from "@/types/product";
+import { FeaturedProductsModal } from "@/components/FeaturedProductsModal";
+import { ImageUploadBox } from "./ImageUploadBox";
 
-interface Product {
-  id: number;
-  name: string;
-  description: string | null;
-  price: number;
-  category: string;
-  enabled: boolean;
-  quantity: number;
-  imageUrl: string | null;
-  venueId: string;
-  createdAt?: any;
-  updatedAt?: any;
-}
+const makeId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `tmp_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
 interface EditedProduct {
   name: string;
   description: string;
   price: number;
-  imageFile: File | null;
+  image_url: string | null;
+  image_path: string | null;
   imagePreview: string | null;
 }
 
@@ -86,9 +61,9 @@ interface NewProduct {
   description: string;
   price: number;
   category: string;
-  newCategory: string;
   quantity: number;
-  imageFile: File | null;
+  image_url: string | null;
+  image_path: string | null;
   imagePreview: string | null;
 }
 
@@ -97,25 +72,32 @@ const initialNewProduct: NewProduct = {
   description: "",
   price: 0,
   category: "",
-  newCategory: "",
   quantity: 0,
-  imageFile: null,
+  image_url: null,
+  image_path: null,
   imagePreview: null,
 };
-
-const isImage = (f: File) => f.type?.startsWith("image/");
-const max5mb = (f: File) => f.size <= 5 * 1024 * 1024;
 
 export function StockManagement() {
   const { venue } = useAuth();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    products,
+    loading,
+    toggleEnabled,
+    updateQuantity,
+    updateProduct,
+    createProduct,
+    removeProduct,
+  } = useProducts();
+
+  const { enabledCategories, getNameById } = useCategories();
+
+  const [featuredOpen, setFeaturedOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editedProducts, setEditedProducts] = useState<
-    Record<number, EditedProduct>
-  >({});
+  const [editedProducts, setEditedProducts] = useState<Record<string, EditedProduct>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -124,133 +106,30 @@ export function StockManagement() {
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
-  const sortedProducts = useMemo(() => {
-    // Orden local (evita índices de Firestore)
-    const copy = [...products];
-    copy.sort((a, b) => {
-      const ca = (a.category || "").toLowerCase();
-      const cb = (b.category || "").toLowerCase();
-      if (ca < cb) return -1;
-      if (ca > cb) return 1;
-      return a.id - b.id;
-    });
-    return copy;
-  }, [products]);
+  // ✅ entityId estable para el upload mientras el modal está abierto
+  const newProductEntityIdRef = useRef<string>(makeId());
 
   const categories = useMemo(() => {
-    return [...new Set(sortedProducts.map((p) => p.category))].sort((a, b) =>
-      a.localeCompare(b)
-    );
-  }, [sortedProducts]);
+    const ids = new Set<string>();
+    products.forEach((p) => ids.add(p.category_id || "SIN CATEGORIA"));
+    const list = Array.from(ids);
+    list.sort((a, b) => getNameById(a).localeCompare(getNameById(b)));
+    return list;
+  }, [products, getNameById]);
 
-  const getProductsByCategory = (category: string) =>
-    sortedProducts.filter(
-      (p) => p.category?.toLowerCase() === category.toLowerCase()
-    );
+  const getProductsByCategory = (categoryKey: string) =>
+    products.filter((p) => (p.category_id || "SIN CATEGORIA") === categoryKey);
 
-  /* =======================
-     FETCH PRODUCTS (sin orderBy -> sin índices)
-     ======================= */
-  useEffect(() => {
-    if (!venue?.id) {
-      // si todavía no hay venue, dejamos loading
-      return;
-    }
-
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, "products"),
-          where("venueId", "==", venue.id)
-        );
-
-        const snap = await getDocs(q);
-
-        const list: Product[] = snap.docs
-          .map((d) => {
-            const data = d.data() as any;
-            return {
-              id: Number(d.id),
-              name: data.name ?? "",
-              description: data.description ?? null,
-              price: Number(data.price ?? 0),
-              category: data.category ?? "SIN CATEGORIA",
-              enabled: Boolean(data.enabled),
-              quantity: Number(data.quantity ?? 0),
-              imageUrl: data.imageUrl ?? null,
-              venueId: data.venueId ?? venue.id,
-              createdAt: data.createdAt,
-              updatedAt: data.updatedAt,
-            };
-          })
-          .filter((p) => !Number.isNaN(p.id));
-
-        setProducts(list);
-      } catch (e) {
-        console.error(e);
-        toast.error("Error al cargar productos");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, [venue?.id]);
-
-  /* =======================
-     SIMPLE UPDATES
-     ======================= */
-  const toggleProduct = async (id: number, enabled: boolean) => {
-    const next = !enabled;
-    setProducts((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, enabled: next } : x))
-    );
-
-    try {
-      await updateDoc(doc(db, "products", String(id)), {
-        enabled: next,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al actualizar producto");
-      // rollback
-      setProducts((prev) =>
-        prev.map((x) => (x.id === id ? { ...x, enabled } : x))
-      );
-    }
-  };
-
-  const updateQuantity = async (id: number, quantity: number) => {
-    const safe = Math.max(0, quantity);
-    setProducts((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, quantity: safe } : x))
-    );
-
-    try {
-      await updateDoc(doc(db, "products", String(id)), {
-        quantity: safe,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al actualizar cantidad");
-    }
-  };
-
-  /* =======================
-     EDIT MODE
-     ======================= */
   const enterEditMode = () => {
-    const map: Record<number, EditedProduct> = {};
-    sortedProducts.forEach((p) => {
+    const map: Record<string, EditedProduct> = {};
+    products.forEach((p) => {
       map[p.id] = {
-        name: p.name,
+        name: p.name ?? "",
         description: p.description || "",
-        price: p.price,
-        imageFile: null,
-        imagePreview: p.imageUrl,
+        price: Number(p.price ?? 0),
+        image_url: p.image_url ?? null,
+        image_path: (p as any).image_path ?? null,
+        imagePreview: p.image_url ?? null,
       };
     });
     setEditedProducts(map);
@@ -262,120 +141,50 @@ export function StockManagement() {
     setIsEditMode(false);
   };
 
-  const handleFieldChange = (
-    id: number,
-    field: keyof EditedProduct,
-    value: any
-  ) => {
+  const handleFieldChange = (id: string, field: keyof EditedProduct, value: any) => {
     setEditedProducts((prev) => ({
       ...prev,
       [id]: { ...prev[id], [field]: value },
     }));
   };
 
-  const handleImageSelect = (id: number, file: File) => {
-    if (!isImage(file)) {
-      toast.error("Solo se permiten imágenes");
-      return;
-    }
-    if (!max5mb(file)) {
-      toast.error("La imagen no puede superar 5MB");
-      return;
-    }
-    const preview = URL.createObjectURL(file);
-    setEditedProducts((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], imageFile: file, imagePreview: preview },
-    }));
-  };
-
-  /* =======================
-     SAVE CHANGES
-     ======================= */
   const saveAllChanges = async () => {
     if (!venue?.id) return;
 
-    // validar
-    for (const p of sortedProducts) {
+    for (const p of products) {
       const e = editedProducts[p.id];
       if (!e) continue;
-      if (!e.name.trim()) {
-        toast.error("El nombre no puede estar vacío");
-        return;
-      }
-      if (e.name.length > 100) {
-        toast.error("El nombre no puede tener más de 100 caracteres");
-        return;
-      }
-      if ((e.description || "").length > 200) {
-        toast.error("La descripción no puede tener más de 200 caracteres");
-        return;
-      }
-      if (Number(e.price) <= 0) {
-        toast.error("El precio debe ser mayor a 0");
-        return;
-      }
+
+      if (!e.name.trim()) return toast.error("El nombre no puede estar vacío");
+      if (e.name.length > 100) return toast.error("El nombre no puede tener más de 100 caracteres");
+      if ((e.description || "").length > 200) return toast.error("La descripción no puede tener más de 200 caracteres");
+      if (Number(e.price) <= 0) return toast.error("El precio debe ser mayor a 0");
     }
 
     setIsSaving(true);
     try {
-      // solo guardamos cambios reales
-      for (const p of sortedProducts) {
+      for (const p of products) {
         const e = editedProducts[p.id];
         if (!e) continue;
 
         const changed =
-          e.name.trim() !== p.name ||
+          e.name.trim() !== (p.name ?? "") ||
           (e.description.trim() || null) !== (p.description || null) ||
           Number(e.price) !== Number(p.price) ||
-          Boolean(e.imageFile);
+          (e.image_url ?? null) !== (p.image_url ?? null) ||
+          (e.image_path ?? null) !== ((p as any).image_path ?? null);
 
         if (!changed) continue;
 
-        let imageUrl = p.imageUrl;
-
-        if (e.imageFile) {
-          const path = `products/${venue.id}/${p.id}-${Date.now()}`;
-          const fileRef = ref(storage, path);
-          await uploadBytes(fileRef, e.imageFile);
-          imageUrl = await getDownloadURL(fileRef);
-        }
-
-        await updateDoc(doc(db, "products", String(p.id)), {
+        await updateProduct(p.id, {
           name: e.name.trim(),
           description: e.description.trim() || null,
           price: Number(e.price),
-          imageUrl,
-          updatedAt: serverTimestamp(),
-        });
+          image_url: e.image_url,
+          image_path: e.image_path,
+        } as any);
       }
 
-      // refetch rápido (para asegurar previews, etc.)
-      const q = query(
-        collection(db, "products"),
-        where("venueId", "==", venue.id)
-      );
-      const snap = await getDocs(q);
-      const list: Product[] = snap.docs
-        .map((d) => {
-          const data = d.data() as any;
-          return {
-            id: Number(d.id),
-            name: data.name ?? "",
-            description: data.description ?? null,
-            price: Number(data.price ?? 0),
-            category: data.category ?? "SIN CATEGORIA",
-            enabled: Boolean(data.enabled),
-            quantity: Number(data.quantity ?? 0),
-            imageUrl: data.imageUrl ?? null,
-            venueId: data.venueId ?? venue.id,
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
-          };
-        })
-        .filter((p) => !Number.isNaN(p.id));
-
-      setProducts(list);
       toast.success("Productos actualizados");
       setIsEditMode(false);
       setEditedProducts({});
@@ -387,96 +196,35 @@ export function StockManagement() {
     }
   };
 
-  /* =======================
-     ADD PRODUCT
-     ======================= */
-  const handleNewProductImageSelect = (file: File) => {
-    if (!isImage(file)) {
-      toast.error("Solo se permiten imágenes");
-      return;
-    }
-    if (!max5mb(file)) {
-      toast.error("La imagen no puede superar 5MB");
-      return;
-    }
-    const preview = URL.createObjectURL(file);
-    setNewProduct((prev) => ({ ...prev, imageFile: file, imagePreview: preview }));
-  };
-
   const addProduct = async () => {
     if (!venue?.id) return;
 
-    const category =
-      newProduct.category === "__new__"
-        ? newProduct.newCategory.trim()
-        : newProduct.category;
+    const categoryId = newProduct.category === "__none__" ? null : newProduct.category;
 
-    if (!newProduct.name.trim()) {
-      toast.error("El nombre es requerido");
-      return;
-    }
-    if (newProduct.name.length > 100) {
-      toast.error("El nombre no puede tener más de 100 caracteres");
-      return;
-    }
-    if (!category) {
-      toast.error("La categoría es requerida");
-      return;
-    }
-    if (Number(newProduct.price) <= 0) {
-      toast.error("El precio debe ser mayor a 0");
-      return;
-    }
-    if ((newProduct.description || "").length > 200) {
-      toast.error("La descripción no puede tener más de 200 caracteres");
-      return;
-    }
+    if (!newProduct.name.trim()) return toast.error("El nombre es requerido");
+    if (newProduct.name.length > 100) return toast.error("El nombre no puede tener más de 100 caracteres");
+    if (Number(newProduct.price) <= 0) return toast.error("El precio debe ser mayor a 0");
+    if ((newProduct.description || "").length > 200) return toast.error("La descripción no puede tener más de 200 caracteres");
 
     setIsAddingProduct(true);
     try {
-      const nextId =
-        products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1;
-
-      let imageUrl: string | null = null;
-      if (newProduct.imageFile) {
-        const path = `products/${venue.id}/${nextId}-${Date.now()}`;
-        const fileRef = ref(storage, path);
-        await uploadBytes(fileRef, newProduct.imageFile);
-        imageUrl = await getDownloadURL(fileRef);
-      }
-
-      await setDoc(doc(db, "products", String(nextId)), {
-        venueId: venue.id,
+      await createProduct({
         name: newProduct.name.trim(),
         description: newProduct.description.trim() || null,
         price: Number(newProduct.price),
-        category: category.toUpperCase(),
         quantity: Number(newProduct.quantity || 0),
-        enabled: true,
-        imageUrl,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      // actualizar estado local
-      setProducts((prev) => [
-        ...prev,
-        {
-          id: nextId,
-          venueId: venue.id,
-          name: newProduct.name.trim(),
-          description: newProduct.description.trim() || null,
-          price: Number(newProduct.price),
-          category: category.toUpperCase(),
-          quantity: Number(newProduct.quantity || 0),
-          enabled: true,
-          imageUrl,
-        },
-      ]);
+        image_url: newProduct.image_url,
+        image_path: newProduct.image_path,
+        category_id: categoryId,
+      } as any);
 
       toast.success("Producto agregado");
+
       setIsAddDialogOpen(false);
       setNewProduct(initialNewProduct);
+
+      // ✅ nuevo entityId para el próximo producto
+      newProductEntityIdRef.current = makeId();
     } catch (e) {
       console.error(e);
       toast.error("Error al agregar producto");
@@ -485,15 +233,11 @@ export function StockManagement() {
     }
   };
 
-  /* =======================
-     DELETE PRODUCT
-     ======================= */
   const deleteProduct = async () => {
     if (!productToDelete) return;
 
     try {
-      await deleteDoc(doc(db, "products", String(productToDelete.id)));
-      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      await removeProduct(productToDelete.id);
       toast.success("Producto eliminado");
     } catch (e) {
       console.error(e);
@@ -501,6 +245,18 @@ export function StockManagement() {
     } finally {
       setProductToDelete(null);
     }
+  };
+
+  const onToggleProduct = async (product: Product) => {
+    try {
+      await toggleEnabled(product.id, product.enabled);
+    } catch {}
+  };
+
+  const onUpdateQty = async (productId: string, quantity: number) => {
+    try {
+      await updateQuantity(productId, quantity);
+    } catch {}
   };
 
   if (!venue?.id) {
@@ -523,19 +279,12 @@ export function StockManagement() {
     <div className="flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
-        <h3 className="text-lg font-semibold text-foreground">
-          Stock de Productos
-        </h3>
+        <h3 className="text-lg font-semibold text-foreground">Productos</h3>
 
         <div className="flex items-center gap-2">
           {isEditMode ? (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={cancelEdit}
-                disabled={isSaving}
-              >
+              <Button variant="outline" size="sm" onClick={cancelEdit} disabled={isSaving}>
                 <X className="h-4 w-4 mr-1" />
                 Cancelar
               </Button>
@@ -558,6 +307,12 @@ export function StockManagement() {
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setCategoriesOpen(true)}>
+                Gestionar categorías
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setFeaturedOpen(true)}>
+                Productos destacados
+              </Button>
             </>
           )}
         </div>
@@ -568,161 +323,126 @@ export function StockManagement() {
           {categories.map((category) => (
             <AccordionItem key={category} value={category}>
               <AccordionTrigger className="text-base font-semibold px-1">
-                {category} ({getProductsByCategory(category).length})
+                {getNameById(category)} ({getProductsByCategory(category).length})
               </AccordionTrigger>
 
               <AccordionContent>
                 <div className="space-y-3">
-                  {getProductsByCategory(category).map((product) => (
-                    <div
-                      key={product.id}
-                      className={`flex items-center gap-4 p-3 rounded-lg border border-border bg-card transition-opacity ${
-                        !product.enabled ? "opacity-50" : ""
-                      }`}
-                    >
-                      <Switch
-                        checked={product.enabled}
-                        onCheckedChange={() =>
-                          toggleProduct(product.id, product.enabled)
-                        }
-                        disabled={isEditMode}
-                      />
+                  {getProductsByCategory(category).map((product) => {
+                    const e = editedProducts[product.id];
 
-                      {/* Imagen */}
-                      <div className="flex-shrink-0">
-                        {isEditMode ? (
-                          <label className="cursor-pointer">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleImageSelect(product.id, file);
+                    return (
+                      <div
+                        key={product.id}
+                        className={`flex items-center gap-4 p-3 rounded-lg border border-border bg-card transition-opacity ${
+                          !product.enabled ? "opacity-50" : ""
+                        }`}
+                      >
+                        <Switch
+                          checked={product.enabled}
+                          onCheckedChange={() => onToggleProduct(product)}
+                          disabled={isEditMode}
+                        />
+
+                        {/* Imagen */}
+                        <div className="flex-shrink-0 w-auto">
+                          {isEditMode ? (
+                            <div className="flex-shrink-0 w-[120px]">
+                            <ImageUploadBox
+                              label=" "
+                              venueId={venue.id}
+                              type="product"
+                              entityId={product.id}
+                              initialImage={e?.imagePreview ?? product.image_url ?? null}
+                              previousPath={e?.image_path ?? (product as any).image_path ?? null}
+                              onUploaded={({ url, path }) => {
+                                setEditedProducts((prev) => ({
+                                  ...prev,
+                                  [product.id]: {
+                                    ...prev[product.id],
+                                    image_url: url,
+                                    image_path: path,
+                                    imagePreview: url,
+                                  },
+                                }));
                               }}
                             />
-                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-primary/50 flex items-center justify-center overflow-hidden bg-muted hover:bg-muted/80 transition-colors">
-                              {editedProducts[product.id]?.imagePreview ? (
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                              {product.image_url ? (
                                 <img
-                                  src={editedProducts[product.id].imagePreview!}
-                                  alt={product.name}
+                                  src={product.image_url}
+                                  alt={product.name ?? ""}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <Upload className="h-5 w-5 text-muted-foreground" />
+                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
-                          </label>
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                            {product.imageUrl ? (
-                              <img
-                                src={product.imageUrl}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="flex-1 min-w-0">
-                        {isEditMode ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editedProducts[product.id]?.name || ""}
-                              onChange={(e) =>
-                                handleFieldChange(
-                                  product.id,
-                                  "name",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Nombre del producto"
-                              className="h-8 text-sm font-medium"
-                              maxLength={100}
-                            />
-
-                            <div className="flex gap-2">
+                        <div className="flex-1 min-w-0">
+                          {isEditMode ? (
+                            <div className="space-y-2">
                               <Input
-                                value={
-                                  editedProducts[product.id]?.description || ""
-                                }
-                                onChange={(e) =>
-                                  handleFieldChange(
-                                    product.id,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Descripción (opcional)"
-                                className="h-8 text-sm flex-1"
-                                maxLength={200}
+                                value={e?.name || ""}
+                                onChange={(ev) => handleFieldChange(product.id, "name", ev.target.value)}
+                                placeholder="Nombre del producto"
+                                className="h-8 text-sm font-medium"
+                                maxLength={100}
                               />
-
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-muted-foreground">
-                                  $
-                                </span>
+                            
+                              <div className="flex gap-2">
                                 <Input
-                                  type="number"
-                                  value={editedProducts[product.id]?.price || 0}
-                                  onChange={(e) =>
-                                    handleFieldChange(
-                                      product.id,
-                                      "price",
-                                      Number(e.target.value) || 0
-                                    )
+                                  value={e?.description || ""}
+                                  onChange={(ev) =>
+                                    handleFieldChange(product.id, "description", ev.target.value)
                                   }
-                                  className="h-8 w-24 text-sm"
-                                  min={0}
-                                  step={1}
+                                  placeholder="Descripción (opcional)"
+                                  className="h-8 text-sm flex-1"
+                                  maxLength={200}
                                 />
+
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm text-muted-foreground">$</span>
+                                  <Input
+                                    type="number"
+                                    value={e?.price ?? 0}
+                                    onChange={(ev) =>
+                                      handleFieldChange(product.id, "price", Number(ev.target.value) || 0)
+                                    }
+                                    className="h-8 w-24 text-sm"
+                                    min={0}
+                                    step={1}
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="font-medium text-foreground truncate">
-                              {product.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {product.description || ""} - ${product.price}
-                            </p>
-                          </>
+                          ) : (
+                            <>
+                              <p className="font-medium text-foreground truncate">{product.name ?? ""}</p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {(product.description ?? "")} - ${product.price}
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        {isEditMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setProductToDelete(product)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          Cant:
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={product.quantity}
-                          onChange={(e) =>
-                            updateQuantity(product.id, Number(e.target.value))
-                          }
-                          className="w-20 h-8 text-center"
-                          disabled={!product.enabled || isEditMode}
-                        />
-                      </div>
-
-                      {isEditMode && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setProductToDelete(product)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -731,7 +451,16 @@ export function StockManagement() {
       </div>
 
       {/* ADD PRODUCT DIALOG */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      <Dialog
+        open={isAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            setNewProduct(initialNewProduct);
+            newProductEntityIdRef.current = makeId();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Agregar Producto</DialogTitle>
@@ -743,9 +472,7 @@ export function StockManagement() {
               <Input
                 id="new-name"
                 value={newProduct.name}
-                onChange={(e) =>
-                  setNewProduct((p) => ({ ...p, name: e.target.value }))
-                }
+                onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))}
                 placeholder="Nombre del producto"
                 maxLength={100}
               />
@@ -756,9 +483,7 @@ export function StockManagement() {
               <Input
                 id="new-description"
                 value={newProduct.description}
-                onChange={(e) =>
-                  setNewProduct((p) => ({ ...p, description: e.target.value }))
-                }
+                onChange={(e) => setNewProduct((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Descripción (opcional)"
                 maxLength={200}
               />
@@ -771,29 +496,7 @@ export function StockManagement() {
                   id="new-price"
                   type="number"
                   value={newProduct.price || ""}
-                  onChange={(e) =>
-                    setNewProduct((p) => ({
-                      ...p,
-                      price: Number(e.target.value) || 0,
-                    }))
-                  }
-                  placeholder="0"
-                  min={0}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-quantity">Cantidad inicial</Label>
-                <Input
-                  id="new-quantity"
-                  type="number"
-                  value={newProduct.quantity}
-                  onChange={(e) =>
-                    setNewProduct((p) => ({
-                      ...p,
-                      quantity: Number(e.target.value) || 0,
-                    }))
-                  }
+                  onChange={(e) => setNewProduct((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
                   placeholder="0"
                   min={0}
                 />
@@ -801,68 +504,46 @@ export function StockManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label>Categoría *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Categoría *</Label>
+                <Button variant="outline" size="sm" onClick={() => setCategoriesOpen(true)}>
+                  Gestionar categorías
+                </Button>
+              </div>
+
               <Select
                 value={newProduct.category}
-                onValueChange={(value) =>
-                  setNewProduct((p) => ({ ...p, category: value }))
-                }
+                onValueChange={(value) => setNewProduct((p) => ({ ...p, category: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  {enabledCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
                     </SelectItem>
                   ))}
-                  <SelectItem value="__new__">+ Nueva categoría</SelectItem>
                 </SelectContent>
               </Select>
-
-              {newProduct.category === "__new__" && (
-                <Input
-                  value={newProduct.newCategory}
-                  onChange={(e) =>
-                    setNewProduct((p) => ({ ...p, newCategory: e.target.value }))
-                  }
-                  placeholder="Nombre de la nueva categoría"
-                  className="mt-2"
-                />
-              )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Imagen</Label>
-              <label className="cursor-pointer block">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleNewProductImageSelect(file);
-                  }}
-                />
-                <div className="w-full h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted hover:bg-muted/80 transition-colors">
-                  {newProduct.imagePreview ? (
-                    <img
-                      src={newProduct.imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Click para subir imagen
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </label>
-            </div>
+            <ImageUploadBox
+              label="Imagen"
+              venueId={venue.id}
+              type="product"
+              entityId={newProductEntityIdRef.current}
+              initialImage={newProduct.image_url}
+              previousPath={newProduct.image_path}
+              onUploaded={({ url, path }) => {
+                setNewProduct((prev) => ({
+                  ...prev,
+                  image_url: url,
+                  image_path: path,
+                  imagePreview: url,
+                }));
+              }}
+            />
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
@@ -870,6 +551,7 @@ export function StockManagement() {
                 onClick={() => {
                   setNewProduct(initialNewProduct);
                   setIsAddDialogOpen(false);
+                  newProductEntityIdRef.current = makeId();
                 }}
                 disabled={isAddingProduct}
               >
@@ -889,17 +571,15 @@ export function StockManagement() {
         </DialogContent>
       </Dialog>
 
+      <CategoriesModal open={categoriesOpen} onOpenChange={setCategoriesOpen} />
+
       {/* DELETE CONFIRM */}
-      <AlertDialog
-        open={!!productToDelete}
-        onOpenChange={(open) => !open && setProductToDelete(null)}
-      >
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente "{productToDelete?.name}".
-              No se puede deshacer.
+              Esta acción eliminará permanentemente "{productToDelete?.name ?? ""}". No se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -913,6 +593,8 @@ export function StockManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FeaturedProductsModal open={featuredOpen} onOpenChange={setFeaturedOpen} />
     </div>
   );
 }

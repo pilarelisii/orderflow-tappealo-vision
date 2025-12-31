@@ -9,6 +9,7 @@ import { useState, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
 import { PrintableReceipt } from "./PrintableReceipt";
 import { createRoot } from "react-dom/client";
+import { useQrLocationsMap } from "@/hooks/useQrLocationsMap";
 
 interface OrderCardProps {
   order: Order;
@@ -31,7 +32,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
   const [isOpen, setIsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
-
+  const qrMap = useQrLocationsMap(order.venue_id);
   const handlePrint = (e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -129,24 +130,24 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
             <div class="header">
               <h1>${venueName?.toUpperCase() || 'PEDIDO'}</h1>
               <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
-              <p>${new Date(order.createdAt).toLocaleString('es-CL')}</p>
+              <p>${new Date(order.created_at).toLocaleString('es-CL')}</p>
             </div>
             <div class="items">
               ${order.items.map(item => `
                 <div class="item">
-                  <div class="item-header">${item.cantidad}x ${item.item}</div>
-                  ${item.descripcion ? `<div class="item-desc">→ ${item.descripcion}</div>` : ''}
+                  <div class="item-header">${item.quantity}x ${item.name}</div>
+                  ${item.description ? `<div class="item-desc">→ ${item.description}</div>` : ''}
                 </div>
               `).join('')}
             </div>
             <div class="delivery">
-              <strong>Entrega:</strong> ${order.lugarEntrega}
-              ${order.telefono ? `<div style="margin-top: 2mm;"><strong>Tel:</strong> ${order.telefono}</div>` : ''}
-              ${order.nombre ? `<div style="margin-top: 2mm;"><strong>Nombre:</strong> ${order.nombre}</div>` : ''}
+              <strong>Entrega:</strong> ${qrMap[order.qr_location_id] || order.qr_location_id}
+              ${order.phone ? `<div style="margin-top: 2mm;"><strong>Tel:</strong> ${order.phone}</div>` : ''}
+              ${order.name ? `<div style="margin-top: 2mm;"><strong>Nombre:</strong> ${order.name}</div>` : ''}
             </div>
-            ${order.comentariosGenerales ? `
+            ${order.additional_comments ? `
               <div class="comments">
-                <strong>Notas:</strong> ${order.comentariosGenerales}
+                <strong>Notas:</strong> ${order.additional_comments}
               </div>
             ` : ''}
             <div class="total">
@@ -172,12 +173,12 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
   };
   
   const config = statusConfig[order.status];
-  const timeAgo = formatDistanceToNow(new Date(order.createdAt), { 
+  const timeAgo = formatDistanceToNow(new Date(order.created_at), { 
     addSuffix: true, 
     locale: es 
   });
 
-  const itemsSummary = order.items.map(i => `${i.cantidad}x ${i.item}`).join(', ');
+  const itemsSummary = order.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
 
   const handlers = useSwipeable({
     onSwiping: (e) => {
@@ -245,31 +246,35 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
             {/* Location first - prominent */}
-            {order.lugarEntrega && (
+            
               <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
                 <MapPin className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-primary">{order.lugarEntrega}</span>
+                {order.qr_location_id && (
+                  <span className="font-semibold text-primary">
+                    {qrMap[order.qr_location_id] || order.qr_location_id || "Sin ubicación"}
+                  </span>
+                )}
               </div>
-            )}
+            
             
             {/* Phone with WhatsApp link */}
-            {order.telefono && (
+            {order.phone && (
               <a 
-                href={`https://wa.me/${order.telefono.replace(/\D/g, '')}`}
+                href={`https://wa.me/${order.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-2 mb-2 bg-success/10 rounded-md px-2 py-1.5 hover:bg-success/20 transition-colors"
               >
                 <Phone className="w-4 h-4 text-success" />
-                <span className="font-medium text-success text-sm">{order.telefono}</span>
+                <span className="font-medium text-success text-sm">{order.phone}</span>
               </a>
             )}
             
             {/* Customer name */}
-            {order.nombre && (
+            {order.name && (
               <div className="flex items-center gap-2 mb-2 bg-secondary rounded-md px-2 py-1.5">
-                <span className="font-medium text-foreground text-sm">{order.nombre}</span>
+                <span className="font-medium text-foreground text-sm">{order.name}</span>
               </div>
             )}
             
@@ -302,18 +307,18 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                   <div key={idx} className="bg-secondary/50 rounded-lg p-2.5">
                     <div className="flex items-center gap-2">
                       <span className="bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                        {item.cantidad}
+                        {item.quantity}
                       </span>
-                      <span className="font-semibold text-foreground">{item.item}</span>
+                      <span className="font-semibold text-foreground">{item.name}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {order.comentariosGenerales && (
+              {order.additional_comments && (
                 <div className="flex items-start gap-2 text-sm bg-accent/50 p-2.5 rounded-lg">
                   <MessageSquare className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                  <span className="text-foreground">{order.comentariosGenerales}</span>
+                  <span className="text-foreground">{order.additional_comments}</span>
                 </div>
               )}
 

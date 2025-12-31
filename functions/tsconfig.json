@@ -9,5 +9,5 @@
     "sourceMap": true,
     "noImplicitReturns": true
   },
-  "include": ["src"]
+  "include": ["src", "src/types/**/*.d.ts"]
 }

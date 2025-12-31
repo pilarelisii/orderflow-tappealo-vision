@@ -1,290 +1,723 @@
-import { onRequest } from "firebase-functions/v2/https";
-import express from "express";
+import * as admin from "firebase-admin";
+import * as functions from "firebase-functions";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import admin from "firebase-admin";
 
-if (!admin.apps.length) admin.initializeApp();
-const db = admin.firestore();
+import { getNextRefOrderId } from "./utils/utils";
+import type { OrderItem } from "./types/orderItem";
+import type { ResolvedVenue } from "./types/resolvedVenue";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { bumpMenuUpdatedAtByVenueId } from "./triggers/menuMeta";
 
+admin.initializeApp();
+
+/* =======================
+   Utils
+   ======================= */
+function slugFromHost(host?: string | null) {
+  if (!host) return null;
+
+  const clean = host.split(":")[0].toLowerCase();
+
+  // ✅ soportar subdominio.localhost en dev
+  if (clean.endsWith(".localhost")) {
+    const parts = clean.split(".");
+    return parts[0] || null; // cafeprueba.localhost -> cafeprueba
+  }
+
+  // localhost o IP -> no subdominio
+  if (clean === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(clean)) return null;
+
+  const parts = clean.split(".");
+  if (parts.length < 3) return null;
+
+  return parts[0];
+}
+
+function safeString(v: any) {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  return s.length ? s : null;
+}
+
+function safeNumber(v: any, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeOrderItems(items: any[]): OrderItem[] {
+  return items.map((it) => ({
+    product_id: safeString(it.product_id),
+    name: safeString(it.name) ?? "",
+    description: safeString(it.description) ?? "",
+    quantity: safeNumber(it.quantity, 0),
+  }));
+}
+
+/* =======================
+   Venue resolver middleware
+   ======================= */
+async function resolveVenue(req: Request, res: Response, next: NextFunction) {
+  try {
+    const db = admin.firestore();
+
+    // ✅ 1) slug por ruta: /public/:slug/...
+    const routeSlug = (req.params?.slug ? String(req.params.slug) : "")
+      .trim()
+      .toLowerCase();
+
+    // ✅ 2) slug por query: ?slug=...
+    const slugOverride = (req.query.slug ? String(req.query.slug) : "")
+      .trim()
+      .toLowerCase();
+
+    // ✅ 3) slug por subdominio (web)
+    const hostSlug = slugFromHost(req.headers.host);
+
+    const slug = routeSlug || slugOverride || hostSlug;
+
+    if (!slug) {
+      return res.status(400).json({
+        error: "No se pudo resolver el venue (falta /:slug, subdominio o ?slug=...)",
+      });
+    }
+
+    const snap = await db
+      .collection("venues")
+      .where("slug", "==", slug)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return res.status(404).json({ error: "Venue no encontrado" });
+    }
+
+    const docSnap = snap.docs[0];
+    const data = docSnap.data() as any;
+
+    req.venue = {
+      id: docSnap.id,
+      slug: data.slug ?? null,
+      name: data.name ?? null,
+      enabled: Boolean(data.enabled ?? true),
+      service_active: Boolean(data.service_active),
+    } satisfies ResolvedVenue;
+
+    return next();
+  } catch (e) {
+    console.error("resolveVenue error:", e);
+    return res.status(500).json({ error: "Error resolviendo venue" });
+  }
+}
+
+/* =======================
+   Express App
+   ======================= */
 const app = express();
 
-const corsHandler = cors({
-  origin: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-});
+app.use(cors({ origin: true }));
+app.use(express.json({ limit: "1mb" }));
 
-// IMPORTANT: evitar el error de path-to-regexp usando regex
-app.options(/.*/, corsHandler);
-app.use(corsHandler);
-app.use(express.json());
+app.get("/public/:slug/health", (_req, res) => res.json({ ok: true }));
 
-const ok = (res: any, body: any) => res.status(200).json(body);
-const bad = (res: any, status: number, error: any) =>
-  res.status(status).json({ error: String(error?.message || error) });
+app.use("/public/:slug", resolveVenue);
 
-/**
- * VENUES
- */
-app.get("/venues/:venueId", async (req, res) => {
+/* =======================
+   /public/:slug/venue
+   ======================= */
+app.get("/public/:slug/venue", async (req, res) => {
+  const venue = req.venue!;
   try {
-    const { venueId } = req.params;
-    const snap = await db.collection("venues").doc(venueId).get();
-    if (!snap.exists) return bad(res, 404, "Venue not found");
-    return ok(res, { id: snap.id, ...snap.data() });
-  } catch (e) {
-    console.error(e);
-    return bad(res, 500, e);
-  }
-});
+    const db = admin.firestore();
+    const snap = await db.collection("venues").doc(venue.id).get();
+    if (!snap.exists) return res.status(404).json({ error: "Venue no encontrado" });
 
-app.patch("/venues/:venueId", async (req, res) => {
-  try {
-    const { venueId } = req.params;
+    const data = snap.data() as any;
 
-    const allowed = ["service_active", "google_maps_url", "phone", "name", "slug"];
-    const patch: Record<string, any> = {};
-    for (const k of allowed) {
-      if (k in req.body) patch[k] = req.body[k];
-    }
+    return res.json({
+      id: snap.id,
+      slug: data.slug ?? null,
+      name: data.name ?? null,
+      service_active: Boolean(data.service_active),
+      menu_version: Number(data.menu_version ?? 1),
 
-    await db.collection("venues").doc(venueId).set(
-      {
-        ...patch,
-        updated_at: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    const fresh = await db.collection("venues").doc(venueId).get();
-    return ok(res, { id: fresh.id, ...fresh.data() });
-  } catch (e) {
-    console.error(e);
-    return bad(res, 500, e);
-  }
-});
-
-/**
- * QR LOCATIONS
- * Colección: qr_locations
- * Campos: venue_id, code, delivery_type, enabled, name, created_at
- */
-app.get("/venues/:venueId/qrs", async (req, res) => {
-  try {
-    const { venueId } = req.params;
-
-    // ✅ Sin orderBy para evitar índice compuesto.
-    const qs = await db
-      .collection("qr_locations")
-      .where("venue_id", "==", venueId)
-      .get();
-
-    const data = qs.docs
-      .map((d) => ({ id: d.id, ...(d.data() as any) }))
-      .sort((a, b) => String(a.code || "").localeCompare(String(b.code || "")));
-
-    return ok(res, data);
-  } catch (e) {
-    console.error(e);
-    return bad(res, 500, e);
-  }
-});
-
-app.post("/venues/:venueId/qrs", async (req, res) => {
-  try {
-    const { venueId } = req.params;
-    const code = String(req.body?.code || "").trim().toLowerCase();
-    const delivery_type = String(req.body?.delivery_type || "en_lugar");
-
-    if (!code) return bad(res, 400, "Missing code");
-
-    // evitar duplicados por venue_id + code
-    const existing = await db
-      .collection("qr_locations")
-      .where("venue_id", "==", venueId)
-      .where("code", "==", code)
-      .limit(1)
-      .get();
-
-    if (!existing.empty) return bad(res, 409, "QR code already exists");
-
-    const docRef = await db.collection("qr_locations").add({
-      venue_id: venueId,
-      code,
-      delivery_type,
-      enabled: true,
-      name: req.body?.name ?? "",
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      phone: data.phone ?? null,
+      location_link: data.location_link ?? null,
+      social_link: data.social_link ?? null,
+      address_1: data.address_1 ?? null,
+      address_2: data.address_2 ?? null,
     });
-
-    const fresh = await docRef.get();
-    return ok(res, { id: fresh.id, ...fresh.data() });
   } catch (e) {
     console.error(e);
-    return bad(res, 500, e);
+    return res.status(500).json({ error: "Error cargando venue" });
   }
 });
 
-app.patch("/venues/:venueId/qrs/:qrId", async (req, res) => {
+/* =======================
+   /public/:slug/:slug/menu/meta
+   ======================= */
+app.get("/public/:slug/:slug/menu/meta", async (req, res) => {
+  const venue = req.venue!;
   try {
-    const { venueId, qrId } = req.params;
-
-    const ref = db.collection("qr_locations").doc(qrId);
-    const snap = await ref.get();
-    if (!snap.exists) return bad(res, 404, "QR not found");
+    const db = admin.firestore();
+    const snap = await db.collection("venues").doc(venue.id).get();
+    if (!snap.exists) return res.status(404).json({ error: "Venue no encontrado" });
 
     const data = snap.data() as any;
-    if (data.venue_id !== venueId) return bad(res, 403, "Forbidden");
 
-    const patch: Record<string, any> = {};
-    if ("code" in req.body) patch.code = String(req.body.code || "").trim().toLowerCase();
-    if ("delivery_type" in req.body) patch.delivery_type = String(req.body.delivery_type || "");
-    if ("enabled" in req.body) patch.enabled = !!req.body.enabled;
-    if ("name" in req.body) patch.name = req.body.name ?? "";
+    const ts = data.menu_updated_at ?? data.menuUpdatedAt ?? data.updated_at ?? null;
 
-    // si cambian code, chequear duplicado
-    if (patch.code && patch.code !== data.code) {
-      const existing = await db
-        .collection("qr_locations")
-        .where("venue_id", "==", venueId)
-        .where("code", "==", patch.code)
-        .limit(1)
-        .get();
+    const ms =
+      ts?.toMillis?.() ? ts.toMillis() : typeof ts === "number" ? ts : null;
 
-      if (!existing.empty) return bad(res, 409, "QR code already exists");
-    }
-
-    await ref.set(
-      {
-        ...patch,
-        updated_at: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    const fresh = await ref.get();
-    return ok(res, { id: fresh.id, ...fresh.data() });
+    return res.json({
+      venue_id: venue.id,
+      slug: data.slug ?? null,
+      menu_updated_at: ms,
+    });
   } catch (e) {
     console.error(e);
-    return bad(res, 500, e);
+    return res.status(500).json({ error: "Error cargando menu meta" });
   }
 });
 
-app.delete("/venues/:venueId/qrs/:qrId", async (req, res) => {
+/* =======================
+   /public/:slug/:slug/products/categories
+   ======================= */
+app.get("/public/:slug/products/categories", async (req, res) => {
+  const venue = req.venue!;
   try {
-    const { venueId, qrId } = req.params;
+    const db = admin.firestore();
 
-    const ref = db.collection("qr_locations").doc(qrId);
-    const snap = await ref.get();
-    if (!snap.exists) return bad(res, 404, "QR not found");
-
-    const data = snap.data() as any;
-    if (data.venue_id !== venueId) return bad(res, 403, "Forbidden");
-
-    await ref.delete();
-    return ok(res, { ok: true });
-  } catch (e) {
-    console.error(e);
-    return bad(res, 500, e);
-  }
-});
-
-app.get("/menu", async (req, res) => {
-  try {
-    const venueSlug = String(req.query.venue || "").trim().toLowerCase();
-    if (!venueSlug) return res.status(400).json({ error: "Missing ?venue=slug" });
-
-    const venueSnap = await db
-      .collection("venues")
-      .where("slug", "==", venueSlug)
-      .limit(1)
-      .get();
-
-    if (venueSnap.empty) return res.status(404).json({ error: "Venue not found" });
-
-    const venueDoc = venueSnap.docs[0];
-    const venueId = venueDoc.id;
-
-    // ✅ Evitamos índices: no usamos orderBy en Firestore, ordenamos en memoria
-    const productsSnap = await db
-      .collection("products")
-      .where("venueId", "==", venueId)
+    const snap = await db
+      .collection("categories")
+      .where("venue_id", "==", venue.id)
       .where("enabled", "==", true)
       .get();
 
-    const products = productsSnap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as any) }))
-      .sort((a, b) => String(a.category || "").localeCompare(String(b.category || "")));
-
-    return res.json({
-      venue: { id: venueId, ...(venueDoc.data() as any) },
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name ?? "",
-        description: p.description ?? null,
-        price: p.price ?? 0,
-        category: p.category ?? "OTROS",
-        quantity: p.quantity ?? 0,
-        imageUrl: p.imageUrl ?? null,
-      })),
+    const list = snap.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        venue_id: x.venue_id ?? null,
+        name: x.name ?? null,
+        enabled: Boolean(x.enabled),
+      };
     });
-  } catch (e: any) {
+
+    list.sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+    return res.json(list);
+  } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: e.message || "Server error" });
+    return res.status(500).json({ error: "Error cargando categorías" });
   }
 });
 
-app.post("/orders", async (req, res) => {
+/* =======================
+   /public/:slug/products?category_id=
+   ======================= */
+app.get("/public/:slug/products", async (req, res) => {
+  const venue = req.venue!;
+  const categoryId = (req.query.category_id ? String(req.query.category_id) : "").trim();
+
   try {
-    const venueSlug = String(req.body?.venueSlug || "").trim().toLowerCase();
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
-    const total = Number(req.body?.total || 0);
+    const db = admin.firestore();
 
-    if (!venueSlug) return res.status(400).json({ error: "Missing venueSlug" });
-    if (!items.length) return res.status(400).json({ error: "Missing items" });
-    if (!Number.isFinite(total) || total <= 0) return res.status(400).json({ error: "Invalid total" });
+    let q: FirebaseFirestore.Query = db
+      .collection("products")
+      .where("venue_id", "==", venue.id)
+      .where("enabled", "==", true);
 
-    const venueSnap = await db
-      .collection("venues")
-      .where("slug", "==", venueSlug)
+    if (categoryId) q = q.where("category_id", "==", categoryId);
+
+    const snap = await q.get();
+
+    const list = snap.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        venue_id: x.venue_id ?? null,
+        category_id: x.category_id ?? null,
+        name: x.name ?? null,
+        description: x.description ?? null,
+        image_url: x.image_url ?? null,
+        price: safeNumber(x.price, 0),
+        quantity: safeNumber(x.quantity, 0),
+        enabled: Boolean(x.enabled),
+        created_at: x.created_at ?? null,
+        updated_at: x.updated_at ?? null,
+      };
+    });
+
+    list.sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+    return res.json(list);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error cargando productos" });
+  }
+});
+
+/* =======================
+   /public/:slug/promotions?active=true
+   ======================= */
+app.get("/public/:slug/promotions", async (req, res) => {
+  const venue = req.venue!;
+  const active = String(req.query.active ?? "").toLowerCase() === "true";
+
+  try {
+    const db = admin.firestore();
+
+    const snap = await db
+      .collection("promotions")
+      .where("venue_id", "==", venue.id)
+      .where("enabled", "==", true)
+      .get();
+
+    const now = admin.firestore.Timestamp.now();
+
+    let list = snap.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        venue_id: x.venue_id ?? null,
+        name: x.name ?? null,
+        image_url: x.image_url ?? null,
+        price: safeNumber(x.price, 0),
+        discount: safeNumber(x.discount, 0),
+        start_date: x.start_date ?? null,
+        end_date: x.end_date ?? null,
+        enabled: Boolean(x.enabled),
+        items: Array.isArray(x.items) ? x.items : [],
+        created_at: x.created_at ?? null,
+        updated_at: x.updated_at ?? null,
+      };
+    });
+
+    if (active) {
+      list = list.filter((p) => {
+        const sd: any = p.start_date;
+        const ed: any = p.end_date;
+        if (!sd || !ed) return false;
+        try {
+          const t = now.toMillis();
+          return sd.toMillis() <= t && t <= ed.toMillis();
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    list.sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+    return res.json(list);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error cargando promociones" });
+  }
+});
+
+/* =======================
+   POST /public/:slug/orders
+   ======================= */
+app.post("/public/:slug/orders", async (req, res) => {
+  const venue = req.venue!;
+  try {
+    const db = admin.firestore();
+
+    if (!venue.service_active) {
+      return res.status(403).json({ error: "Servicio desactivado" });
+    }
+
+    const body = req.body ?? {};
+
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return res.status(400).json({ error: "items es requerido" });
+    }
+
+    const items = normalizeOrderItems(body.items);
+
+    for (const it of items) {
+      if (!it.name || it.quantity <= 0) {
+        return res.status(400).json({ error: "Item inválido (name/quantity)" });
+      }
+    }
+
+    // ✅ qr_location_id NO obligatorio
+    let qrLocationId = safeString(body.qr_location_id) || "sin ubicacion";
+
+    const paymentMethod = safeString(body.payment_method);
+    let refOrderId = safeString(body.ref_order_id);
+
+    if (!paymentMethod) return res.status(400).json({ error: "payment_method es requerido" });
+
+    // 🔒 Validar QR solo si NO es "sin ubicacion"
+    if (qrLocationId !== "sin ubicacion") {
+      const qrSnap = await db.collection("qr_locations").doc(qrLocationId).get();
+      if (!qrSnap.exists) return res.status(404).json({ error: "QR no encontrado" });
+
+      const qrData = qrSnap.data() as any;
+      if (qrData.venue_id !== venue.id) {
+        return res.status(403).json({ error: "QR no pertenece al venue" });
+      }
+    }
+
+    if (!refOrderId) {
+      refOrderId = await getNextRefOrderId(db, venue.id);
+    }
+
+    const payload: any = {
+      venue_id: venue.id,
+      qr_location_id: qrLocationId,
+      payment_method: paymentMethod,
+      ref_order_id: refOrderId,
+
+      items,
+      additional_comments: safeString(body.additional_comments),
+      phone: safeString(body.phone),
+      name: safeString(body.name),
+
+      status: "entrante",
+      total: safeNumber(body.total, 0),
+
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const ref = await db.collection("orders").add(payload);
+
+    return res.status(201).json({ id: ref.id, ref_order_id: refOrderId });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error creando orden" });
+  }
+});
+
+/* =======================
+   PATCH /public/:slug/orders/:id/status
+   ======================= */
+const ORDER_STATUSES = ["entrante", "preparacion", "retirar", "enviar", "terminadas"] as const;
+type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+app.patch("/public/:slug/orders/:id/status", async (req, res) => {
+  const venue = req.venue!;
+  const orderId = String(req.params.id || "").trim();
+  const nextStatus = String(req.body?.status || "").trim().toLowerCase() as OrderStatus;
+
+  if (!orderId) return res.status(400).json({ error: "id es requerido" });
+  if (!ORDER_STATUSES.includes(nextStatus)) {
+    return res.status(400).json({ error: "status inválido" });
+  }
+
+  try {
+    const db = admin.firestore();
+    const ref = db.collection("orders").doc(orderId);
+    const snap = await ref.get();
+
+    if (!snap.exists) return res.status(404).json({ error: "Orden no encontrada" });
+
+    const data = snap.data() as any;
+    if (data.venue_id !== venue.id) return res.status(403).json({ error: "No autorizado" });
+
+    await ref.update({
+      status: nextStatus,
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.json({ ok: true, id: orderId, status: nextStatus });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error actualizando status" });
+  }
+});
+
+/* =======================
+   GET /public/:slug/payment_methods
+   ======================= */
+app.get("/public/:slug/payment_methods", async (req, res) => {
+  const venue = req.venue!;
+  try {
+    const db = admin.firestore();
+
+    const snap = await db.collection("payment_types").where("venue_id", "==", venue.id).get();
+
+    const list = snap.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        name: x.name ?? null,
+        type: x.type ?? null,
+        enabled: Boolean(x.enabled),
+        venue_id: x.venue_id ?? null,
+        payment_data: x.payment_data ?? null,
+        created_at: x.created_at ?? null,
+        updated_at: x.updated_at ?? null,
+      };
+    });
+
+    list.sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+    return res.json(list);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error cargando payment_methods" });
+  }
+});
+
+/* =======================
+   GET /public/:slug/products/featured
+   ======================= */
+app.get("/public/:slug/products/featured", async (req, res) => {
+  const venue = req.venue!;
+  try {
+    const db = admin.firestore();
+
+    const snap = await db
+      .collection("products")
+      .where("venue_id", "==", venue.id)
+      .where("enabled", "==", true)
+      .where("featured", "==", true)
+      .limit(4)
+      .get();
+
+    const list = snap.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        venue_id: x.venue_id ?? null,
+        category_id: x.category_id ?? null,
+        name: x.name ?? null,
+        description: x.description ?? null,
+        image_url: x.image_url ?? null,
+        price: safeNumber(x.price, 0),
+        featured: Boolean(x.featured),
+      };
+    });
+
+    return res.json(list);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error cargando destacados" });
+  }
+});
+
+app.post("/public/:slug/mp/preference", async (req, res) => {
+  const venue = req.venue!;
+  try {
+    const db = admin.firestore();
+
+    // 1) Buscar MP habilitado
+    const snap = await db
+      .collection("payment_types")
+      .where("venue_id", "==", venue.id)
+      .where("type", "==", "MP")
+      .where("enabled", "==", true)
       .limit(1)
       .get();
 
-    if (venueSnap.empty) return res.status(404).json({ error: "Venue not found" });
+    if (snap.empty) return res.status(400).json({ error: "Mercado Pago no configurado" });
 
-    const venueDoc = venueSnap.docs[0];
-    const venueId = venueDoc.id;
+    const mpData = snap.docs[0].data().payment_data ?? {};
+    const accessToken = mpData.mp_access_token;
+    if (!accessToken) return res.status(400).json({ error: "Falta mp_access_token" });
 
-    // (Opcional) si querés respetar “service_active”
-    const venueData = venueDoc.data() as any;
-    if (venueData?.service_active === false) {
-      return res.status(403).json({ error: "Venue is closed" });
-    }
+    // 2) Body
+    const body = req.body ?? {};
+    const items = Array.isArray(body.items) ? body.items : [];
+    const total = Number(body.total ?? 0);
 
-    const orderData = {
-      venueId,
-      status: "entrante",
-      items: items.map((i: any) => ({
-        item: String(i.item || ""),
-        cantidad: Number(i.cantidad || 0),
-        descripcion: i.descripcion ? String(i.descripcion) : null,
+    const qr_location_id = String(body.qr_location_id ?? "").trim();
+    const ref_order_id = String(body.ref_order_id ?? "").trim();
+
+    const success_url = String(body.success_url ?? "").trim();
+    const failure_url = String(body.failure_url ?? "").trim();
+    const pending_url = String(body.pending_url ?? "").trim();
+
+    if (!qr_location_id) return res.status(400).json({ error: "Falta qr_location_id" });
+    if (!ref_order_id) return res.status(400).json({ error: "Falta ref_order_id" });
+    if (!items.length) return res.status(400).json({ error: "Faltan items" });
+
+    // obligatorias si usás auto_return
+    if (!success_url) return res.status(400).json({ error: "Falta success_url" });
+    if (!failure_url) return res.status(400).json({ error: "Falta failure_url" });
+    if (!pending_url) return res.status(400).json({ error: "Falta pending_url" });
+
+    // webhook público (ngrok o prod)
+    const NOTIFICATION_BASE_URL = String(process.env.NOTIFICATION_BASE_URL || "").replace(/\/$/, "");
+    if (!NOTIFICATION_BASE_URL) return res.status(400).json({ error: "Falta NOTIFICATION_BASE_URL" });
+
+    const notificationUrl = `${NOTIFICATION_BASE_URL}/mp/webhook/${venue.id}`;
+
+    const notes = body.notes ?? null;
+    const phone_number = body.phone_number ?? null;
+    const customer_name = body.customer_name ?? null;
+
+    // 3) Preferencia MP (SIN orderId inexistente)
+    const preferencePayload = {
+      items: items.map((it: any) => ({
+        title: String(it.name ?? "Producto"),
+        quantity: Number(it.quantity ?? 1),
+        unit_price: Number(it.unit_price ?? it.price ?? 0),
       })),
-      total,
-      lugar_entrega: req.body?.lugar_entrega ? String(req.body.lugar_entrega) : "",
-      telefono: req.body?.telefono ? String(req.body.telefono) : null,
-      nombre: req.body?.nombre ? String(req.body.nombre) : null,
-      comentarios_generales: req.body?.comentarios_generales ? String(req.body.comentarios_generales) : null,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
+
+      back_urls: {
+        success: success_url,
+        failure: failure_url,
+        pending: pending_url,
+      },
+      auto_return: "approved",
+
+      // webhook
+      notification_url: notificationUrl,
+
+      // referencia tuya (la usás para debug / conciliación)
+      external_reference: ref_order_id,
+
+      // metadata completa para crear la orden al confirmar
+      metadata: {
+        venue_id: venue.id,
+        venue_slug: venue.slug,
+        ref_order_id,
+        qr_location_id,
+        notes,
+        phone_number,
+        customer_name,
+        total,
+        items, // ✅ CLAVE: webhook crea orden con esto
+      },
     };
 
-    const ref = await db.collection("orders").add(orderData);
-    const saved = await ref.get();
+    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(preferencePayload),
+    });
 
-    return res.status(201).json({ id: saved.id, ...(saved.data() as any) });
-  } catch (e: any) {
-    console.error(e);
-    return res.status(500).json({ error: e.message || "Server error" });
+    const json = await mpRes.json();
+
+    if (!mpRes.ok) {
+      return res.status(400).json({ error: "MP error", details: json });
+    }
+
+    return res.json({
+      preferenceId: json.id,
+      init_point: json.init_point,
+      sandbox_init_point: json.sandbox_init_point,
+    });
+  } catch (e) {
+    console.error("❌ MP preference error:", e);
+    return res.status(500).json({ error: "Error creando preferencia MP" });
   }
 });
 
-export const api = onRequest({ region: "us-central1" }, app);
+app.post("/mp/webhook/:venueId", async (req, res) => {
+  try {
+    const { venueId } = req.params;
+
+    // MP manda id por body o por query
+    const paymentId =
+      req.body?.data?.id ||
+      req.query?.["data.id"] ||
+      req.query?.id ||
+      null;
+
+    if (!paymentId) return res.status(200).send("ok");
+
+    const db = admin.firestore();
+
+    // 1) buscar access token del venue
+    const snap = await db
+      .collection("payment_types")
+      .where("venue_id", "==", venueId)
+      .where("type", "==", "MP")
+      .where("enabled", "==", true)
+      .limit(1)
+      .get();
+
+    if (snap.empty) return res.status(200).send("ok");
+
+    const mpData = snap.docs[0].data().payment_data ?? {};
+    const accessToken = mpData.mp_access_token;
+    if (!accessToken) return res.status(200).send("ok");
+
+    // 2) consultar pago real
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const payment = await mpRes.json();
+
+    // 3) SOLO approved crea orden
+    if (payment?.status !== "approved") return res.status(200).send("ok");
+
+    // 4) idempotencia fuerte: docId por paymentId (nunca duplica)
+    const orderDocId = `mp_${String(paymentId)}`;
+    const orderRef = db.collection("orders").doc(orderDocId);
+    const exists = await orderRef.get();
+    if (exists.exists) return res.status(200).send("ok");
+
+    const meta = payment?.metadata || {};
+    const items = Array.isArray(meta.items) ? meta.items : [];
+    const total = Number(meta.total ?? payment?.transaction_amount ?? 0);
+
+    // 5) crear orden FINAL (entrante)
+    await orderRef.set({
+      venue_id: String(meta.venue_id ?? venueId),
+      venue_slug: meta.venue_slug ?? null,
+
+      ref_order_id: meta.ref_order_id ?? payment?.external_reference ?? null,
+      qr_location_id: meta.qr_location_id ?? "sin-ubicacion",
+
+      payment_method: "mercado_pago",
+      payment_status: "approved",
+      mp_payment_id: String(paymentId),
+      mp_status: payment?.status ?? null,
+      mp_status_detail: payment?.status_detail ?? null,
+      mp_preference_id: payment?.order?.id ?? null,
+
+      total,
+      name: meta.customer_name ?? null,
+      phone: meta.phone_number ?? null,
+      additional_comments: meta.notes ?? null,
+
+      items,
+
+      status: "entrante",
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      paid_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.status(200).send("ok");
+  } catch (e) {
+    console.error("WEBHOOK ERROR:", e);
+    return res.status(200).send("ok");
+  }
+});
+
+/* =======================
+   Export Cloud Function
+   ======================= */
+export const publicApi = functions.https.onRequest(app);
+
+export const onProductWrite = onDocumentWritten(
+  { document: "products/{id}", region: "us-central1" },
+  async (event) => {
+    const after = event.data?.after?.data() as any;
+    const before = event.data?.before?.data() as any;
+    const venueId = (after?.venue_id ?? before?.venue_id) as string | undefined;
+    if (!venueId) return;
+    await bumpMenuUpdatedAtByVenueId(venueId);
+  }
+);
+
+export const onCategoryWrite = onDocumentWritten(
+  { document: "categories/{id}", region: "us-central1" },
+  async (event) => {
+    const after = event.data?.after?.data() as any;
+    const before = event.data?.before?.data() as any;
+    const venueId = (after?.venue_id ?? before?.venue_id) as string | undefined;
+    if (!venueId) return;
+    await bumpMenuUpdatedAtByVenueId(venueId);
+  }
+);

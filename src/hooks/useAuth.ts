@@ -8,13 +8,8 @@ import {
 } from "firebase/auth";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { fbAuth, db } from "@/integrations/firebase/client";
+import { Venue } from "@/types/venue";
 
-interface Venue {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null; // mantenemos compatibilidad con tu UI
-}
 
 type AuthError = { message: string } | null;
 
@@ -43,7 +38,7 @@ export function useAuth() {
       try {
         const q = query(
           collection(db, "venues"),
-          where("user_id", "==", u.uid),
+          where("auth_id", "==", u.uid),
           limit(1)
         );
         const snap = await getDocs(q);
@@ -61,7 +56,17 @@ export function useAuth() {
           id: d.id,
           name: data.name,
           slug: data.slug,
+          auth_id: data.auth_id,
           logo_url: data.logoUrl ?? data.logo_url ?? null,
+          enabled: data.enabled,
+          service_active: data.service_active ?? false,
+          updated_at: data.updatedAt,
+          location_link: data.locationLink ?? null,
+          phone: data.phone ?? null,
+          adress_1: data.adress_1 ?? null,
+          adress_2: data.adress_2 ?? null,
+          social_link: data.socialLink ?? null,
+          created_at: data.createdAt,
         });
       } catch (err) {
         console.error("Error fetching venue:", err);

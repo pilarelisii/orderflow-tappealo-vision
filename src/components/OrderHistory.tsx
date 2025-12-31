@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Order } from "@/types/order";
 import { Card } from "@/components/ui/card";
 import {
@@ -9,6 +9,7 @@ import {
 import { ChevronDown, Calendar, Package } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useQrLocationsMap } from "@/hooks/useQrLocationsMap";
 
 interface OrderHistoryProps {
   availableDates: string[];
@@ -27,6 +28,22 @@ export function OrderHistory({ availableDates, getOrdersByDate }: OrderHistoryPr
     });
   };
 
+  // ✅ Derivamos un venueId UNA VEZ (sin hooks dentro de loops)
+  const venueId = useMemo(() => {
+    // intentamos sacar venue_id del primer día que tenga pedidos
+    for (const dateStr of availableDates) {
+      const date = new Date(dateStr + "T12:00:00");
+      const orders = getOrdersByDate(date);
+      const vid = orders?.[0]?.venue_id;
+      if (vid) return String(vid);
+    }
+    return "";
+  }, [availableDates, getOrdersByDate]);
+
+  // ✅ Hook llamado una sola vez, arriba y siempre
+  const qrMap = useQrLocationsMap(venueId);
+
+  // ✅ Render condicional DESPUÉS de hooks
   if (availableDates.length === 0) return null;
 
   return (
@@ -88,7 +105,7 @@ export function OrderHistory({ availableDates, getOrdersByDate }: OrderHistoryPr
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm text-muted-foreground">
-                            #{order.id.slice(0, 8).toUpperCase()}
+                            #{order.ref_order_id ?? order.id.slice(0, 8).toUpperCase()}
                           </span>
                           <span className="font-semibold text-primary">
                             ${Number(order.total || 0).toLocaleString("es-AR")}
@@ -96,12 +113,14 @@ export function OrderHistory({ availableDates, getOrdersByDate }: OrderHistoryPr
                         </div>
 
                         <p className="text-sm font-medium text-foreground">
-                          {order.lugarEntrega || "—"}
+                          {qrMap?.[order.qr_location_id] ||
+                            order.qr_location_id ||
+                            "Sin ubicación"}
                         </p>
 
                         <p className="text-sm text-muted-foreground mt-1">
                           {order.items
-                            .map((i) => `${i.cantidad}x ${i.item}`)
+                            .map((i) => `${i.quantity}x ${i.name}`)
                             .join(", ")}
                         </p>
                       </div>

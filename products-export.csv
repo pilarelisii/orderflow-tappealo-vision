@@ -47,27 +47,18 @@ id;name;description;price;category;enabled;quantity;updated_at;venue_id;image_ur
 11;Americano;2 shots + agua;170;blacks;true;0;2025-12-07 19:58:15.559093+00;7b0f107b-6f09-4319-81b7-e9db1697f011;
 109;Alfajor de almendras;Sablé de almendras relleno de dulce de leche y crocante de almendras;4800;DULCES;true;0;2025-12-12 17:50:08.011655+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/109-1765561805706.webp
 10;Espresso Doble;2 shots;170;blacks;true;0;2025-12-07 19:58:49.722455+00;7b0f107b-6f09-4319-81b7-e9db1697f011;
-90;Coca Cola 500 ml;Coca Cola original;4000;BEBIDAS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 91;Coca Cola Zero 500 ml;Coca Cola Zero sin azúcar;4000;BEBIDAS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-92;Scon de queso;Scon casero de queso;3900;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 93;Chipa (2);Chipas caseros;3400;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 95;Croissant con jamón y queso;Con jamón natural y queso tybo;5600;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 96;Fosforito con jamón y queso;Con jamón natural y queso tybo;5600;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 97;Medialunas con jamón y queso;Con jamón natural y queso tybo;5100;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-98;Medialuna de grasa;Medialuna tradicional de grasa;1700;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 99;Tostado de pan de masa madre;Opción integral/blanco con jamón natural y queso tybo;6500;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 100;Tostado de pan de chipa;Tostado en pan de chipa;5700;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 101;Avocado toast;Tostada de pan de masa madre con semillas, opción integral/blanco, con palta, huevo revuelto, queso untable y mix de semillas;8900;SALADOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-103;Budín de limón;Con semillas de amapola y glaseado de limón;4600;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-104;Budín Carrot Cake;Con nueces aromatizado con canela y jengibre;5100;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-105;Cookies red velvet;Con chips de chocolate blanco;4000;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-106;Cookies chips de chocolate;Cookies con chips de chocolate;4300;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 108;Alfajor de Maicena;Alfajor tradicional de maicena;4500;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 110;Alfajor de pistacho;Sablé de vainilla con tropezones de pistachos relleno con ganache de chocolate blanco;5000;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 111;Milhoja;Masa hojaldrada rellena de crema pastelera;4400;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 112;Sfogliatella;Hojaldre italiano relleno;5600;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-113;Medialunas;Medialunas de manteca;1700;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-114;Fosforito;Relleno con dulce de leche;5200;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 115;Porción de tostadas (2);Pan de masa madre, opción integral/blanco, con 2 dips a elección (queso crema, dulce de leche o mermelada);4200;DULCES;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 117;Lungo;Base de agua + espresso;3000;CAFÉS (NEGROS);true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 118;Espresso doble;Doble shot de espresso + agua;3400;CAFÉS (NEGROS);true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
@@ -79,8 +70,6 @@ id;name;description;price;category;enabled;quantity;updated_at;venue_id;image_ur
 124;Iced latte;Leche + shot de espresso + hielo;4800;CAFÉS FRÍOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 125;Iced latte saborizados;Sabores: chocolate negro, chocolate blanco, vainilla, caramelo, pistacho, dulce de leche;5100;CAFÉS FRÍOS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 126;Macchiatto;Shot de espresso + leche + espuma;3400;CAFÉ CON LECHE;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-127;Capuccino;Shot de espresso + leche + espuma de leche;4400;CAFÉ CON LECHE;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-128;Flat white;Doble shot de espresso + leche + fina capa de espuma;4700;CAFÉ CON LECHE;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 129;Mocaccino;Salsa de chocolate + shot de espresso + leche + espuma;4600;CAFÉ CON LECHE;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 130;Magic;Doble shot de Ristretto + leche + fina capa de espuma;4100;CAFÉ CON LECHE;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 131;Latte;Shot de espresso + leche + espuma;4800;CAFÉ CON LECHE;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
@@ -90,15 +79,26 @@ id;name;description;price;category;enabled;quantity;updated_at;venue_id;image_ur
 94;Croissant;Croissant de manteca;3600;SALADOS;true;0;2025-12-08 00:55:34.552871+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/94-1765155328196.webp
 116;Espresso;Shot de espresso;3200;CAFÉS (NEGROS);true;0;2025-12-12 15:28:36.239587+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 89;Agua sin gas 500 ml;Agua mineral sin gas;4500;BEBIDAS;true;0;2025-12-10 13:17:16.521509+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+105;Cookies red velvet;Con chips de chocolate blanco;4000;DULCES;true;0;2025-12-18 14:01:18.235038+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/105-1766066475854.jpg
+90;Coca Cola 500 ml;Coca Cola original;4000;BEBIDAS;true;0;2025-12-18 13:26:00.607182+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+113;Medialunas;Medialunas de manteca;1700;DULCES;true;0;2025-12-18 14:01:21.030506+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/113-1766066479704.jpg
+104;Budín Carrot Cake;Con nueces aromatizado con canela y jengibre;5100;DULCES;true;0;2025-12-18 14:07:40.041144+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/104-1766066858794.webp
+128;Flat white;Doble shot de espresso + leche + fina capa de espuma;4700;CAFÉ CON LECHE;true;0;2025-12-18 14:08:26.634031+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/128-1766066905093.webp
+114;Fosforito;Relleno con dulce de leche;5200;DULCES;true;0;2025-12-18 17:00:17.502596+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/114-1766077214956.webp
 135;Submarino;Leche con barrita de chocolate (negro/blanco);4000;OTRAS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 136;Té;Variedad de tés;3800;OTRAS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 137;Jugo de naranja;Jugo de naranja natural;3200;OTRAS;true;0;2025-12-07 23:40:16.004173+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-102;Budín hamburguesa;Con corazón de dulce de leche;5400;DULCES;true;0;2025-12-10 15:59:43.246079+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-138;Cookies;;6200;SIN TACC;true;0;2025-12-12 13:59:50.363594+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-139;Scon de queso;;8200;SIN TACC;true;0;2025-12-12 13:59:50.363594+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-140;Alfajor de frambuesa;;7000;SIN TACC;true;0;2025-12-12 13:59:50.363594+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-141;Alfajor de pistacho;;7000;SIN TACC;true;0;2025-12-12 13:59:50.363594+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-142;Brownie;;9200;SIN TACC;true;0;2025-12-12 13:59:50.363594+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
 143;Agua con gas 500ml;Agua mineral con gas;2500;BEBIDAS;true;0;2025-12-12 15:32:33.664933+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-144;Producto de prueba;prueba;20;CAFÉS (NEGROS);true;0;2025-12-12 17:29:39.043498+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
-107;Cookies rellenas de Nutella;Cookies rellenas con Nutella;4300;DULCES;true;0;2025-12-12 18:05:11.21948+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/107-1765562709672.webp
+106;Cookies chips de chocolate;Cookies con chips de chocolate;4300;DULCES;true;0;2025-12-18 14:01:19.652813+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/106-1766066478292.jpg
+102;Budín hamburguesa;Con corazón de dulce de leche;5400;DULCES;true;0;2025-12-18 14:07:37.15829+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/102-1766066854820.webp
+103;Budín de limón;Con semillas de amapola y glaseado de limón;4600;DULCES;true;0;2025-12-18 14:07:38.730369+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/103-1766066857353.webp
+92;Scon de queso;Scon casero de queso;3900;SALADOS;true;0;2025-12-18 14:07:41.616662+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/92-1766066860116.webp
+138;Cookies SIN TACC;;6200;SIN TACC;true;0;2025-12-18 14:07:42.031018+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+139;Scon de queso SIN TACC;;8200;SIN TACC;true;0;2025-12-18 14:07:42.464099+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+140;Alfajor de frambuesa SIN TACC;;7000;SIN TACC;true;0;2025-12-18 14:07:42.847043+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+141;Alfajor de pistacho SIN TACC;;7000;SIN TACC;true;0;2025-12-18 14:07:43.263077+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+142;Brownie SIN TACC;;9200;SIN TACC;true;0;2025-12-18 14:07:43.678412+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;
+127;Capuccino;Shot de espresso + leche + espuma de leche;4400;CAFÉ CON LECHE;true;0;2025-12-18 14:08:24.990858+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/127-1766066902056.webp
+107;Cookies rellenas de Nutella;Cookies rellenas con Nutella;4300;DULCES;true;0;2025-12-18 14:13:52.044046+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/107-1766067229101.jpg
+98;Medialuna de grasa;Medialuna tradicional de grasa;1700;SALADOS;true;0;2025-12-18 14:13:53.667604+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;https://ugjpnxlqchirpyrlkuwk.supabase.co/storage/v1/object/public/product-images/b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5/98-1766067232152.jpg
+144;preuba;prueba;1;CAFÉ CON LECHE;true;0;2025-12-18 17:08:19.071276+00;b3d0fe5b-6b42-4472-a8a4-37f62fdb01a5;

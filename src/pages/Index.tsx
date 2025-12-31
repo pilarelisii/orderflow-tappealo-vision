@@ -5,14 +5,7 @@ import { OrderHistory } from "@/components/OrderHistory";
 import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 import { Order, OrderStatus } from "@/types/order";
-import {
-  Loader2,
-  Settings,
-  LogOut,
-  Package,
-  ChevronRight,
-  QrCode,
-} from "lucide-react";
+import { Loader2, Settings, LogOut, Package, ChevronRight, QrCode, Store, Printer, Tag } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -130,7 +123,7 @@ const Index = () => {
                 >
                   <div className="flex items-center gap-3">
                     <Package className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">Stock de Productos</span>
+                    <span className="font-medium">Menu</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
@@ -141,6 +134,36 @@ const Index = () => {
                   <div className="flex items-center gap-3">
                     <QrCode className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">QRs</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+                <Link
+                  to="/promotions"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Tag className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Promociones</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+                <Link
+                  to="/comercio-settings"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Store className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Comercio</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+                <Link
+                  to="/printer-settings"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Printer className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Impresora</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>

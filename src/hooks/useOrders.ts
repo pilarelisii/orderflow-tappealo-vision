@@ -9,13 +9,12 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   updateDoc,
   doc,
-  getDocs,
   Timestamp,
 } from "firebase/firestore";
+import { useQrLocationsMap } from "./useQrLocationsMap";
 
 const toIso = (v: any) => {
   if (!v) return new Date().toISOString();
@@ -28,25 +27,18 @@ const toIso = (v: any) => {
 const mapDocToOrder = (id: string, data: any): Order => ({
   id,
   items: data.items ?? [],
-  comentariosGenerales: data.comentariosGenerales ?? null,
-  lugarEntrega: data.lugarEntrega ?? "sin-ubicacion",
-  telefono: data.telefono ?? null,
-  nombre: data.nombre ?? null,
-  total: data.total ?? 0,
+  additional_comments: data.additional_comments ?? null,
+  qr_location_id: data.qr_location_id ?? "sin-ubicacion",
+  phone: data.phone ?? null,
+  name: data.name ?? null, // ✅ FIX (antes decía data.nombre)
+  total: Number(data.total ?? 0),
   status: (data.status ?? "entrante") as OrderStatus,
-  createdAt: toIso(data.createdAt),
-  updatedAt: toIso(data.updatedAt),
+  created_at: toIso(data.created_at),
+  updated_at: toIso(data.updated_at),
+  ref_order_id: data.ref_order_id ?? null,
+  payment_method: data.payment_method ?? null,
+  venue_id: data.venue_id ?? null,
 });
-
-const sortByCreatedAtDesc = (list: Order[]) =>
-  [...list].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-
-const isIndexError = (err: any) =>
-  err?.code === "failed-precondition" &&
-  typeof err?.message === "string" &&
-  err.message.toLowerCase().includes("requires an index");
 
 export function useOrders() {
   const { venue } = useAuth();
@@ -56,7 +48,14 @@ export function useOrders() {
   const { toast } = useToast();
   const { playNotificationSound } = useNotificationSound();
 
-  // ✅ refs para NO re-suscribirse por deps inestables
+  // ✅ qrMap sin romper deps
+  const qrMap = useQrLocationsMap(venue?.id);
+  const qrMapRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    qrMapRef.current = qrMap || {};
+  }, [qrMap]);
+
+  // ✅ refs estables
   const toastRef = useRef(toast);
   const soundRef = useRef(playNotificationSound);
   useEffect(() => {
@@ -67,45 +66,46 @@ export function useOrders() {
   }, [playNotificationSound]);
 
   const initialized = useRef(false);
-  const currentVenueId = useRef<string | null>(null);
 
   useEffect(() => {
-    // si no hay venue
     if (!venue?.id) {
       setOrders([]);
       setLoading(false);
       initialized.current = false;
-      currentVenueId.current = null;
       return;
     }
 
-    // ✅ si cambia de venue, reiniciamos. Si es el mismo, no “parpadees” con loading.
-    const venueChanged = currentVenueId.current !== venue.id;
-    currentVenueId.current = venue.id;
-    if (venueChanged) {
-      setLoading(true);
-      initialized.current = false;
-    }
+    setLoading(true);
 
+    // ✅ NO orderBy: evita depender de índices y evita problemas de timestamp/campos
     const q = query(
       collection(db, "orders"),
-      where("venueId", "==", venue.id),
-      orderBy("createdAt", "desc")
+      where("venue_id", "==", venue.id)
     );
 
     const unsubscribe = onSnapshot(
       q,
+      { includeMetadataChanges: true }, // ✅ ayuda en algunos casos de cache/reconexión
       (snapshot) => {
-        const list = snapshot.docs.map((d) => mapDocToOrder(d.id, d.data()));
+        // ✅ ordenamos en JS
+        const list = snapshot.docs
+          .map((d) => mapDocToOrder(d.id, d.data()))
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
 
+        // 🔔 notificaciones solo después del primer load
         if (initialized.current) {
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
-              const newOrder = mapDocToOrder(change.doc.id, change.doc.data());
+              const o = mapDocToOrder(change.doc.id, change.doc.data());
               soundRef.current?.();
               toastRef.current?.({
                 title: "🔔 Nuevo pedido",
-                description: `Pedido recibido: ${newOrder.lugarEntrega}`,
+                description: `Pedido recibido: ${
+                  qrMapRef.current[o.qr_location_id] ?? o.qr_location_id
+                }`,
               });
             }
           });
@@ -115,39 +115,14 @@ export function useOrders() {
         setLoading(false);
         initialized.current = true;
       },
-      async (error) => {
-        console.error("Error fetching orders:", error);
-
-        // fallback si falta índice
-        if (isIndexError(error)) {
-          try {
-            const fallbackQ = query(
-              collection(db, "orders"),
-              where("venueId", "==", venue.id)
-            );
-            const snap = await getDocs(fallbackQ);
-            const list = snap.docs.map((d) => mapDocToOrder(d.id, d.data()));
-            setOrders(sortByCreatedAtDesc(list));
-            setLoading(false);
-
-            toastRef.current?.({
-              title: "Falta índice en Firestore",
-              description:
-                "Estoy usando un modo compatible (sin índice). Creá el índice para mejor performance.",
-              variant: "destructive",
-            });
-            return;
-          } catch (e) {
-            console.error("Fallback fetch failed:", e);
-          }
-        }
-
+      (error) => {
+        console.error("🔥 onSnapshot error:", error);
+        setLoading(false);
         toastRef.current?.({
           title: "Error",
-          description: "No se pudieron cargar los pedidos",
+          description: "No se pudieron cargar los pedidos en tiempo real",
           variant: "destructive",
         });
-        setLoading(false);
       }
     );
 
@@ -155,31 +130,16 @@ export function useOrders() {
   }, [venue?.id]);
 
   const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
-    try {
-      await updateDoc(doc(db, "orders", order.id), {
-        status: newStatus,
-        updatedAt: Timestamp.now(),
-      });
-
-      toastRef.current?.({
-        title: "Pedido actualizado",
-        description: `Pedido movido a ${newStatus}`,
-      });
-    } catch (error) {
-      console.error("Error updating order:", error);
-      toastRef.current?.({
-        title: "Error",
-        description: "No se pudo actualizar el pedido",
-        variant: "destructive",
-      });
-    }
+    await updateDoc(doc(db, "orders", order.id), {
+      status: newStatus,
+      updated_at: Timestamp.now(),
+    });
   };
 
   const isOrderRecent = (order: Order) => {
-    const now = new Date();
-    const orderDate = new Date(order.createdAt);
-    const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
-    return hoursDiff <= 24;
+    const now = Date.now();
+    const created = new Date(order.created_at).getTime();
+    return now - created <= 24 * 60 * 60 * 1000;
   };
 
   const getOrdersByStatus = (status: OrderStatus) =>
@@ -190,29 +150,17 @@ export function useOrders() {
     target.setHours(0, 0, 0, 0);
 
     return orders.filter((order) => {
-      const d = new Date(order.createdAt);
+      const d = new Date(order.created_at);
       d.setHours(0, 0, 0, 0);
-
-      if (d.getTime() !== target.getTime()) return false;
-
-      const now = new Date();
-      const hoursDiff =
-        (now.getTime() - new Date(order.createdAt).getTime()) /
-        (1000 * 60 * 60);
-      return hoursDiff > 24;
+      return d.getTime() === target.getTime();
     });
   };
 
   const getAvailableDates = () => {
     const dates = new Set<string>();
-    const now = new Date();
-
     orders.forEach((order) => {
-      const d = new Date(order.createdAt);
-      const hoursDiff = (now.getTime() - d.getTime()) / (1000 * 60 * 60);
-      if (hoursDiff > 24) dates.add(d.toISOString().split("T")[0]);
+      dates.add(new Date(order.created_at).toISOString().split("T")[0]);
     });
-
     return Array.from(dates).sort((a, b) => b.localeCompare(a));
   };
 
