@@ -16,6 +16,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 const columns: { title: string; status: OrderStatus }[] = [
   { title: "Pedido Entrante", status: "entrante" },
@@ -106,6 +107,7 @@ const Index = () => {
         </div>
 
         <div className="flex items-center gap-2">
+
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -157,7 +159,7 @@ const Index = () => {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-                <Link
+                {/* <Link
                   to="/printer-settings"
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                 >
@@ -166,7 +168,7 @@ const Index = () => {
                     <span className="font-medium">Impresora</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
+                </Link> */}
               </nav>
             </SheetContent>
           </Sheet>

@@ -57,12 +57,12 @@ export function useOrders() {
 
   // ✅ refs estables
   const toastRef = useRef(toast);
-  const soundRef = useRef(playNotificationSound);
+  const playNotificationSoundRef = useRef(playNotificationSound);
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
   useEffect(() => {
-    soundRef.current = playNotificationSound;
+    playNotificationSoundRef.current = playNotificationSound;
   }, [playNotificationSound]);
 
   const initialized = useRef(false);
@@ -100,7 +100,9 @@ export function useOrders() {
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
               const o = mapDocToOrder(change.doc.id, change.doc.data());
-              soundRef.current?.();
+
+              playNotificationSoundRef.current();
+
               toastRef.current?.({
                 title: "🔔 Nuevo pedido",
                 description: `Pedido recibido: ${
