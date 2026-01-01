@@ -14,24 +14,33 @@ interface OrderColumnProps {
 }
 
 const columnStyles: Record<OrderStatus, string> = {
-  entrante: 'border-t-column-entrante',
-  preparacion: 'border-t-column-preparacion',
-  retirar: 'border-t-column-retirar',
-  enviar: 'border-t-column-enviar',
-  terminadas: 'border-t-column-terminadas',
+  entrante: "border-t-column-entrante",
+  preparacion: "border-t-column-preparacion",
+  retirar: "border-t-column-retirar",
+  enviar: "border-t-column-enviar",
+  terminadas: "border-t-column-terminadas",
 };
 
 const badgeStyles: Record<OrderStatus, string> = {
-  entrante: 'bg-column-entrante',
-  preparacion: 'bg-column-preparacion',
-  retirar: 'bg-column-retirar',
-  enviar: 'bg-column-enviar',
-  terminadas: 'bg-column-terminadas',
+  entrante: "bg-column-entrante",
+  preparacion: "bg-column-preparacion",
+  retirar: "bg-column-retirar",
+  enviar: "bg-column-enviar",
+  terminadas: "bg-column-terminadas",
 };
 
-export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderColumnProps) {
+export function OrderColumn({
+  title,
+  status,
+  orders,
+  onMoveNext,
+  onMovePrev,
+  canMoveNext,
+  canMovePrev,
+  venueName,
+}: OrderColumnProps) {
   return (
-    <div 
+    <div
       className={cn(
         "flex-1 min-w-[280px] max-w-[350px] bg-card rounded-xl border-t-4 shadow-sm",
         columnStyles[status]
@@ -40,7 +49,7 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-lg text-foreground">{title}</h2>
-          <span 
+          <span
             className={cn(
               "text-sm font-bold px-2.5 py-1 rounded-full text-primary-foreground",
               badgeStyles[status]
@@ -49,16 +58,22 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
             {orders.length}
           </span>
         </div>
-        {status === 'terminadas' && (
+
+        {status === "terminadas" && (
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-            <span className="text-sm font-medium text-muted-foreground">Total Facturado Hoy</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              Total Facturado Hoy
+            </span>
             <span className="text-lg font-bold text-foreground">
-              ${orders.reduce((sum, order) => sum + Number(order.total), 0).toLocaleString('es-AR')}
+              $
+              {orders
+                .reduce((sum, order) => sum + Number(order.total || 0), 0)
+                .toLocaleString("es-AR")}
             </span>
           </div>
         )}
       </div>
-      
+
       <div className="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
         {orders.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -66,9 +81,9 @@ export function OrderColumn({ title, status, orders, onMoveNext, onMovePrev, can
           </div>
         ) : (
           orders.map((order) => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
+            <OrderCard
+              key={order.id}
+              order={order}
               onMoveNext={onMoveNext}
               onMovePrev={onMovePrev}
               canMoveNext={canMoveNext}

@@ -1,7 +1,8 @@
 export interface OrderItem {
-  cantidad: number;
-  item: string;
-  descripcion: string;
+  quantity: number;
+  name: string;
+  description: string;
+  product_id: string | null;
 }
 
 export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'enviar' | 'terminadas';
@@ -9,14 +10,15 @@ export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'enviar' | 't
 export interface Order {
   id: string;
   items: OrderItem[];
-  comentarios_generales: string | null;
-  lugar_entrega: string;
-  telefono: string | null;
-  nombre: string | null;
-  payment_method: string | null;
+  additional_comments: string | null;
+  qr_location_id: string;
+  phone: string | null;
+  name: string | null;
   total: number;
   status: OrderStatus;
   created_at: string;
   updated_at: string;
-  venue_name?: string;
+  ref_order_id: string;
+  venue_id: string;
+  payment_method: string;
 }

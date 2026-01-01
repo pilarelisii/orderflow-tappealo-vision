@@ -24,13 +24,10 @@ const Stock = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
@@ -38,7 +35,9 @@ const Stock = () => {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
+
           <img src={tappealoLogo} alt="Tappealo" className="h-10" />
+
           {venue && (
             <div className="border-l border-border pl-4">
               <p className="font-semibold text-foreground">{venue.name}</p>
@@ -48,9 +47,10 @@ const Stock = () => {
         </div>
       </header>
 
-      {/* Content */}
       <main className="px-6 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Stock de Productos</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">
+          Menu 
+        </h1>
         <StockManagement />
       </main>
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Pencil, Save, X, Upload, ImageIcon, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Save, X, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -35,24 +34,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useCategories } from "@/hooks/useCategories";
+import { CategoriesModal } from "@/components/CategoriesModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useProducts } from "@/hooks/useProducts";
+import { Product } from "@/types/product";
+import { FeaturedProductsModal } from "@/components/FeaturedProductsModal";
+import { ImageUploadBox } from "./ImageUploadBox";
 
-interface Product {
-  id: number;
-  name: string;
-  description: string | null;
-  price: number;
-  category: string;
-  enabled: boolean;
-  quantity: number;
-  image_url: string | null;
-  venue_id: string;
-}
+const makeId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `tmp_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
 interface EditedProduct {
   name: string;
   description: string;
   price: number;
-  imageFile: File | null;
+  image_url: string | null;
+  image_path: string | null;
   imagePreview: string | null;
 }
 
@@ -61,155 +61,79 @@ interface NewProduct {
   description: string;
   price: number;
   category: string;
-  newCategory: string;
   quantity: number;
-  imageFile: File | null;
+  image_url: string | null;
+  image_path: string | null;
   imagePreview: string | null;
 }
 
 const initialNewProduct: NewProduct = {
-  name: '',
-  description: '',
+  name: "",
+  description: "",
   price: 0,
-  category: '',
-  newCategory: '',
+  category: "",
   quantity: 0,
-  imageFile: null,
+  image_url: null,
+  image_path: null,
   imagePreview: null,
 };
 
 export function StockManagement() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { venue } = useAuth();
+
+  const {
+    products,
+    loading,
+    toggleEnabled,
+    updateQuantity,
+    updateProduct,
+    createProduct,
+    removeProduct,
+  } = useProducts();
+
+  const { enabledCategories, getNameById } = useCategories();
+
+  const [featuredOpen, setFeaturedOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editedProducts, setEditedProducts] = useState<Record<number, EditedProduct>>({});
+  const [editedProducts, setEditedProducts] = useState<Record<string, EditedProduct>>({});
   const [isSaving, setIsSaving] = useState(false);
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newProduct, setNewProduct] = useState<NewProduct>(initialNewProduct);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [venueId, setVenueId] = useState<string | null>(null);
+
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // ✅ entityId estable para el upload mientras el modal está abierto
+  const newProductEntityIdRef = useRef<string>(makeId());
 
-  const fetchProducts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('No user logged in');
-      setLoading(false);
-      return;
-    }
+  const categories = useMemo(() => {
+    const ids = new Set<string>();
+    products.forEach((p) => ids.add(p.category_id || "SIN CATEGORIA"));
+    const list = Array.from(ids);
+    list.sort((a, b) => getNameById(a).localeCompare(getNameById(b)));
+    return list;
+  }, [products, getNameById]);
 
-    const { data: venue, error: venueError } = await supabase
-      .from('venues')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (venueError || !venue) {
-      console.error('Error fetching venue:', venueError);
-      toast.error('Error al cargar venue');
-      setLoading(false);
-      return;
-    }
-
-    setVenueId(venue.id);
-
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('venue_id', venue.id)
-      .order('category')
-      .order('id');
-
-    if (error) {
-      console.error('Error fetching products:', error);
-      toast.error('Error al cargar productos');
-      return;
-    }
-
-    setProducts(data || []);
-    setLoading(false);
-  };
-
-  const toggleProduct = async (id: number, currentEnabled: boolean) => {
-    const newEnabled = !currentEnabled;
-    
-    setProducts(prev => prev.map(p => 
-      p.id === id ? { ...p, enabled: newEnabled } : p
-    ));
-
-    const { error } = await supabase
-      .from('products')
-      .update({ enabled: newEnabled })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating product:', error);
-      toast.error('Error al actualizar producto');
-      setProducts(prev => prev.map(p => 
-        p.id === id ? { ...p, enabled: currentEnabled } : p
-      ));
-      return;
-    }
-
-    toast.success(newEnabled ? 'Producto activado' : 'Producto desactivado');
-  };
-
-  const updateQuantity = async (id: number, quantity: number) => {
-    const safeQuantity = Math.max(0, quantity);
-    
-    setProducts(prev => prev.map(p => 
-      p.id === id ? { ...p, quantity: safeQuantity } : p
-    ));
-
-    const { error } = await supabase
-      .from('products')
-      .update({ quantity: safeQuantity })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating quantity:', error);
-      toast.error('Error al actualizar cantidad');
-    }
-  };
+  const getProductsByCategory = (categoryKey: string) =>
+    products.filter((p) => (p.category_id || "SIN CATEGORIA") === categoryKey);
 
   const enterEditMode = () => {
-    const initialEdits: Record<number, EditedProduct> = {};
-    products.forEach(product => {
-      initialEdits[product.id] = {
-        name: product.name,
-        description: product.description || '',
-        price: product.price,
-        imageFile: null,
-        imagePreview: product.image_url,
+    const map: Record<string, EditedProduct> = {};
+    products.forEach((p) => {
+      map[p.id] = {
+        name: p.name ?? "",
+        description: p.description || "",
+        price: Number(p.price ?? 0),
+        image_url: p.image_url ?? null,
+        image_path: (p as any).image_path ?? null,
+        imagePreview: p.image_url ?? null,
       };
     });
-    setEditedProducts(initialEdits);
+    setEditedProducts(map);
     setIsEditMode(true);
-  };
-
-  const handleImageSelect = (productId: number, file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Solo se permiten archivos de imagen');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 5MB');
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-    setEditedProducts(prev => ({
-      ...prev,
-      [productId]: {
-        ...prev[productId],
-        imageFile: file,
-        imagePreview: previewUrl,
-      },
-    }));
   };
 
   const cancelEdit = () => {
@@ -217,216 +141,93 @@ export function StockManagement() {
     setIsEditMode(false);
   };
 
-  const handleFieldChange = (id: number, field: keyof EditedProduct, value: string | number) => {
-    setEditedProducts(prev => ({
+  const handleFieldChange = (id: string, field: keyof EditedProduct, value: any) => {
+    setEditedProducts((prev) => ({
       ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
+      [id]: { ...prev[id], [field]: value },
     }));
   };
 
   const saveAllChanges = async () => {
-    const changedProducts = products.filter(product => {
-      const edited = editedProducts[product.id];
-      if (!edited) return false;
-      return (
-        edited.name !== product.name ||
-        edited.description !== (product.description || '') ||
-        edited.price !== product.price ||
-        edited.imageFile !== null
-      );
-    });
+    if (!venue?.id) return;
 
-    if (changedProducts.length === 0) {
-      toast.info('No hay cambios para guardar');
-      setIsEditMode(false);
-      return;
-    }
+    for (const p of products) {
+      const e = editedProducts[p.id];
+      if (!e) continue;
 
-    // Validate all changes
-    for (const product of changedProducts) {
-      const edited = editedProducts[product.id];
-      if (!edited.name.trim()) {
-        toast.error(`El nombre del producto no puede estar vacío`);
-        return;
-      }
-      if (edited.name.length > 100) {
-        toast.error(`El nombre no puede tener más de 100 caracteres`);
-        return;
-      }
-      if (edited.description.length > 200) {
-        toast.error(`La descripción no puede tener más de 200 caracteres`);
-        return;
-      }
-      if (edited.price <= 0) {
-        toast.error(`El precio debe ser mayor a 0`);
-        return;
-      }
+      if (!e.name.trim()) return toast.error("El nombre no puede estar vacío");
+      if (e.name.length > 100) return toast.error("El nombre no puede tener más de 100 caracteres");
+      if ((e.description || "").length > 200) return toast.error("La descripción no puede tener más de 200 caracteres");
+      if (Number(e.price) <= 0) return toast.error("El precio debe ser mayor a 0");
     }
 
     setIsSaving(true);
-
     try {
-      for (const product of changedProducts) {
-        const edited = editedProducts[product.id];
-        let imageUrl = product.image_url;
+      for (const p of products) {
+        const e = editedProducts[p.id];
+        if (!e) continue;
 
-        // Upload image if there's a new one
-        if (edited.imageFile) {
-          const fileExt = edited.imageFile.name.split('.').pop();
-          const fileName = `${product.venue_id}/${product.id}-${Date.now()}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('product-images')
-            .upload(fileName, edited.imageFile, { upsert: true });
+        const changed =
+          e.name.trim() !== (p.name ?? "") ||
+          (e.description.trim() || null) !== (p.description || null) ||
+          Number(e.price) !== Number(p.price) ||
+          (e.image_url ?? null) !== (p.image_url ?? null) ||
+          (e.image_path ?? null) !== ((p as any).image_path ?? null);
 
-          if (uploadError) {
-            console.error('Error uploading image:', uploadError);
-            toast.error('Error al subir imagen');
-            continue;
-          }
+        if (!changed) continue;
 
-          const { data: urlData } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(fileName);
-          
-          imageUrl = urlData.publicUrl;
-        }
-
-        const { error } = await supabase
-          .from('products')
-          .update({
-            name: edited.name.trim(),
-            description: edited.description.trim() || null,
-            price: edited.price,
-            image_url: imageUrl,
-          })
-          .eq('id', product.id);
-
-        if (error) throw error;
+        await updateProduct(p.id, {
+          name: e.name.trim(),
+          description: e.description.trim() || null,
+          price: Number(e.price),
+          image_url: e.image_url,
+          image_path: e.image_path,
+        } as any);
       }
 
-      // Update local state
-      setProducts(prev => prev.map(p => {
-        const edited = editedProducts[p.id];
-        if (edited && changedProducts.find(cp => cp.id === p.id)) {
-          return {
-            ...p,
-            name: edited.name.trim(),
-            description: edited.description.trim() || null,
-            price: edited.price,
-            image_url: edited.imagePreview || p.image_url,
-          };
-        }
-        return p;
-      }));
-
-      toast.success(`${changedProducts.length} producto(s) actualizado(s)`);
+      toast.success("Productos actualizados");
       setIsEditMode(false);
       setEditedProducts({});
-    } catch (error) {
-      console.error('Error saving products:', error);
-      toast.error('Error al guardar cambios');
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al guardar cambios");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleNewProductImageSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Solo se permiten archivos de imagen');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 5MB');
-      return;
-    }
-    const previewUrl = URL.createObjectURL(file);
-    setNewProduct(prev => ({ ...prev, imageFile: file, imagePreview: previewUrl }));
-  };
-
   const addProduct = async () => {
-    const categoryToUse = newProduct.category === '__new__' ? newProduct.newCategory.trim() : newProduct.category;
-    
-    if (!newProduct.name.trim()) {
-      toast.error('El nombre es requerido');
-      return;
-    }
-    if (newProduct.name.length > 100) {
-      toast.error('El nombre no puede tener más de 100 caracteres');
-      return;
-    }
-    if (!categoryToUse) {
-      toast.error('La categoría es requerida');
-      return;
-    }
-    if (newProduct.price <= 0) {
-      toast.error('El precio debe ser mayor a 0');
-      return;
-    }
-    if (!venueId) {
-      toast.error('Error: venue no encontrado');
-      return;
-    }
+    if (!venue?.id) return;
+
+    const categoryId = newProduct.category === "__none__" ? null : newProduct.category;
+
+    if (!newProduct.name.trim()) return toast.error("El nombre es requerido");
+    if (newProduct.name.length > 100) return toast.error("El nombre no puede tener más de 100 caracteres");
+    if (Number(newProduct.price) <= 0) return toast.error("El precio debe ser mayor a 0");
+    if ((newProduct.description || "").length > 200) return toast.error("La descripción no puede tener más de 200 caracteres");
 
     setIsAddingProduct(true);
-
     try {
-      // Get max ID for this venue to generate new ID
-      const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
-      const newId = maxId + 1;
+      await createProduct({
+        name: newProduct.name.trim(),
+        description: newProduct.description.trim() || null,
+        price: Number(newProduct.price),
+        quantity: Number(newProduct.quantity || 0),
+        image_url: newProduct.image_url,
+        image_path: newProduct.image_path,
+        category_id: categoryId,
+      } as any);
 
-      let imageUrl: string | null = null;
+      toast.success("Producto agregado");
 
-      if (newProduct.imageFile) {
-        const fileExt = newProduct.imageFile.name.split('.').pop();
-        const fileName = `${venueId}/${newId}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, newProduct.imageFile, { upsert: true });
-
-        if (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          toast.error('Error al subir imagen');
-          setIsAddingProduct(false);
-          return;
-        }
-
-        const { data: urlData } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(fileName);
-        
-        imageUrl = urlData.publicUrl;
-      }
-
-      const { data, error } = await supabase
-        .from('products')
-        .insert({
-          id: newId,
-          name: newProduct.name.trim(),
-          description: newProduct.description.trim() || null,
-          price: newProduct.price,
-          category: categoryToUse.toUpperCase(),
-          quantity: newProduct.quantity,
-          enabled: true,
-          venue_id: venueId,
-          image_url: imageUrl,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setProducts(prev => [...prev, data].sort((a, b) => a.category.localeCompare(b.category) || a.id - b.id));
-      setNewProduct(initialNewProduct);
       setIsAddDialogOpen(false);
-      toast.success('Producto agregado');
-    } catch (error) {
-      console.error('Error adding product:', error);
-      toast.error('Error al agregar producto');
+      setNewProduct(initialNewProduct);
+
+      // ✅ nuevo entityId para el próximo producto
+      newProductEntityIdRef.current = makeId();
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al agregar producto");
     } finally {
       setIsAddingProduct(false);
     }
@@ -436,32 +237,39 @@ export function StockManagement() {
     if (!productToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productToDelete.id);
-
-      if (error) throw error;
-
-      setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
-      toast.success('Producto eliminado');
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      toast.error('Error al eliminar producto');
+      await removeProduct(productToDelete.id);
+      toast.success("Producto eliminado");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al eliminar producto");
     } finally {
       setProductToDelete(null);
     }
   };
 
-  const getProductsByCategory = (category: string) => {
-    return products.filter((p) => p.category.toLowerCase() === category.toLowerCase());
+  const onToggleProduct = async (product: Product) => {
+    try {
+      await toggleEnabled(product.id, product.enabled);
+    } catch {}
   };
 
-  const categories = [...new Set(products.map(p => p.category))].sort();
+  const onUpdateQty = async (productId: string, quantity: number) => {
+    try {
+      await updateQuantity(productId, quantity);
+    } catch {}
+  };
+
+  if (!venue?.id) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        Cargando venue...
+      </div>
+    );
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
@@ -469,26 +277,18 @@ export function StockManagement() {
 
   return (
     <div className="flex flex-col">
-      {/* Header with edit controls */}
+      {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Stock de Productos</h3>
+        <h3 className="text-lg font-semibold text-foreground">Productos</h3>
+
         <div className="flex items-center gap-2">
           {isEditMode ? (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={cancelEdit}
-                disabled={isSaving}
-              >
+              <Button variant="outline" size="sm" onClick={cancelEdit} disabled={isSaving}>
                 <X className="h-4 w-4 mr-1" />
                 Cancelar
               </Button>
-              <Button
-                size="sm"
-                onClick={saveAllChanges}
-                disabled={isSaving}
-              >
+              <Button size="sm" onClick={saveAllChanges} disabled={isSaving}>
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
@@ -499,20 +299,19 @@ export function StockManagement() {
             </>
           ) : (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={enterEditMode}
-              >
+              <Button variant="outline" size="sm" onClick={enterEditMode}>
                 <Pencil className="h-4 w-4 mr-1" />
                 Editar
               </Button>
-              <Button
-                size="sm"
-                onClick={() => setIsAddDialogOpen(true)}
-              >
+              <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setCategoriesOpen(true)}>
+                Gestionar categorías
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setFeaturedOpen(true)}>
+                Productos destacados
               </Button>
             </>
           )}
@@ -524,126 +323,126 @@ export function StockManagement() {
           {categories.map((category) => (
             <AccordionItem key={category} value={category}>
               <AccordionTrigger className="text-base font-semibold px-1">
-                {category} ({getProductsByCategory(category).length})
+                {getNameById(category)} ({getProductsByCategory(category).length})
               </AccordionTrigger>
+
               <AccordionContent>
                 <div className="space-y-3">
-                  {getProductsByCategory(category).map((product) => (
-                    <div
-                      key={product.id}
-                      className={`flex items-center gap-4 p-3 rounded-lg border border-border bg-card transition-opacity ${
-                        !product.enabled ? "opacity-50" : ""
-                      }`}
-                    >
-                      <Switch
-                        checked={product.enabled}
-                        onCheckedChange={() => toggleProduct(product.id, product.enabled)}
-                        disabled={isEditMode}
-                      />
-                      
-                      {/* Product image */}
-                      <div className="flex-shrink-0">
-                        {isEditMode ? (
-                          <label className="cursor-pointer">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleImageSelect(product.id, file);
+                  {getProductsByCategory(category).map((product) => {
+                    const e = editedProducts[product.id];
+
+                    return (
+                      <div
+                        key={product.id}
+                        className={`flex items-center gap-4 p-3 rounded-lg border border-border bg-card transition-opacity ${
+                          !product.enabled ? "opacity-50" : ""
+                        }`}
+                      >
+                        <Switch
+                          checked={product.enabled}
+                          onCheckedChange={() => onToggleProduct(product)}
+                          disabled={isEditMode}
+                        />
+
+                        {/* Imagen */}
+                        <div className="flex-shrink-0 w-auto">
+                          {isEditMode ? (
+                            <div className="flex-shrink-0 w-[120px]">
+                            <ImageUploadBox
+                              label=" "
+                              venueId={venue.id}
+                              type="product"
+                              entityId={product.id}
+                              initialImage={e?.imagePreview ?? product.image_url ?? null}
+                              previousPath={e?.image_path ?? (product as any).image_path ?? null}
+                              onUploaded={({ url, path }) => {
+                                setEditedProducts((prev) => ({
+                                  ...prev,
+                                  [product.id]: {
+                                    ...prev[product.id],
+                                    image_url: url,
+                                    image_path: path,
+                                    imagePreview: url,
+                                  },
+                                }));
                               }}
                             />
-                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-primary/50 flex items-center justify-center overflow-hidden bg-muted hover:bg-muted/80 transition-colors">
-                              {editedProducts[product.id]?.imagePreview ? (
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                              {product.image_url ? (
                                 <img
-                                  src={editedProducts[product.id].imagePreview!}
-                                  alt={product.name}
+                                  src={product.image_url}
+                                  alt={product.name ?? ""}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <Upload className="h-5 w-5 text-muted-foreground" />
+                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
-                          </label>
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                            {product.image_url ? (
-                              <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="flex-1 min-w-0">
-                        {isEditMode ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editedProducts[product.id]?.name || ''}
-                              onChange={(e) => handleFieldChange(product.id, 'name', e.target.value)}
-                              placeholder="Nombre del producto"
-                              className="h-8 text-sm font-medium"
-                              maxLength={100}
-                            />
-                            <div className="flex gap-2">
+                        <div className="flex-1 min-w-0">
+                          {isEditMode ? (
+                            <div className="space-y-2">
                               <Input
-                                value={editedProducts[product.id]?.description || ''}
-                                onChange={(e) => handleFieldChange(product.id, 'description', e.target.value)}
-                                placeholder="Descripción (opcional)"
-                                className="h-8 text-sm flex-1"
-                                maxLength={200}
+                                value={e?.name || ""}
+                                onChange={(ev) => handleFieldChange(product.id, "name", ev.target.value)}
+                                placeholder="Nombre del producto"
+                                className="h-8 text-sm font-medium"
+                                maxLength={100}
                               />
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-muted-foreground">$</span>
+                            
+                              <div className="flex gap-2">
                                 <Input
-                                  type="number"
-                                  value={editedProducts[product.id]?.price || 0}
-                                  onChange={(e) => handleFieldChange(product.id, 'price', parseFloat(e.target.value) || 0)}
-                                  className="h-8 w-24 text-sm"
-                                  min={0}
-                                  step={1}
+                                  value={e?.description || ""}
+                                  onChange={(ev) =>
+                                    handleFieldChange(product.id, "description", ev.target.value)
+                                  }
+                                  placeholder="Descripción (opcional)"
+                                  className="h-8 text-sm flex-1"
+                                  maxLength={200}
                                 />
+
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm text-muted-foreground">$</span>
+                                  <Input
+                                    type="number"
+                                    value={e?.price ?? 0}
+                                    onChange={(ev) =>
+                                      handleFieldChange(product.id, "price", Number(ev.target.value) || 0)
+                                    }
+                                    className="h-8 w-24 text-sm"
+                                    min={0}
+                                    step={1}
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="font-medium text-foreground truncate">{product.name}</p>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {product.description || ''} - ${product.price}
-                            </p>
-                          </>
+                          ) : (
+                            <>
+                              <p className="font-medium text-foreground truncate">{product.name ?? ""}</p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {(product.description ?? "")} - ${product.price}
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        {isEditMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setProductToDelete(product)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Cant:</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={product.quantity}
-                          onChange={(e) => updateQuantity(product.id, parseInt(e.target.value) || 0)}
-                          className="w-20 h-8 text-center"
-                          disabled={!product.enabled || isEditMode}
-                        />
-                      </div>
-                      {isEditMode && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setProductToDelete(product)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -651,19 +450,29 @@ export function StockManagement() {
         </Accordion>
       </div>
 
-      {/* Add Product Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      {/* ADD PRODUCT DIALOG */}
+      <Dialog
+        open={isAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            setNewProduct(initialNewProduct);
+            newProductEntityIdRef.current = makeId();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Agregar Producto</DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="new-name">Nombre *</Label>
               <Input
                 id="new-name"
                 value={newProduct.name}
-                onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))}
                 placeholder="Nombre del producto"
                 maxLength={100}
               />
@@ -674,7 +483,7 @@ export function StockManagement() {
               <Input
                 id="new-description"
                 value={newProduct.description}
-                onChange={(e) => setNewProduct(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => setNewProduct((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Descripción (opcional)"
                 maxLength={200}
               />
@@ -686,19 +495,8 @@ export function StockManagement() {
                 <Input
                   id="new-price"
                   type="number"
-                  value={newProduct.price || ''}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                  placeholder="0"
-                  min={0}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-quantity">Cantidad inicial</Label>
-                <Input
-                  id="new-quantity"
-                  type="number"
-                  value={newProduct.quantity}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                  value={newProduct.price || ""}
+                  onChange={(e) => setNewProduct((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
                   placeholder="0"
                   min={0}
                 />
@@ -706,59 +504,46 @@ export function StockManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label>Categoría *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Categoría *</Label>
+                <Button variant="outline" size="sm" onClick={() => setCategoriesOpen(true)}>
+                  Gestionar categorías
+                </Button>
+              </div>
+
               <Select
                 value={newProduct.category}
-                onValueChange={(value) => setNewProduct(prev => ({ ...prev, category: value }))}
+                onValueChange={(value) => setNewProduct((p) => ({ ...p, category: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  {enabledCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
                   ))}
-                  <SelectItem value="__new__">+ Nueva categoría</SelectItem>
                 </SelectContent>
               </Select>
-              {newProduct.category === '__new__' && (
-                <Input
-                  value={newProduct.newCategory}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, newCategory: e.target.value }))}
-                  placeholder="Nombre de la nueva categoría"
-                  className="mt-2"
-                />
-              )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Imagen</Label>
-              <label className="cursor-pointer block">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleNewProductImageSelect(file);
-                  }}
-                />
-                <div className="w-full h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted hover:bg-muted/80 transition-colors">
-                  {newProduct.imagePreview ? (
-                    <img
-                      src={newProduct.imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mt-2">Click para subir imagen</p>
-                    </div>
-                  )}
-                </div>
-              </label>
-            </div>
+            <ImageUploadBox
+              label="Imagen"
+              venueId={venue.id}
+              type="product"
+              entityId={newProductEntityIdRef.current}
+              initialImage={newProduct.image_url}
+              previousPath={newProduct.image_path}
+              onUploaded={({ url, path }) => {
+                setNewProduct((prev) => ({
+                  ...prev,
+                  image_url: url,
+                  image_path: path,
+                  imagePreview: url,
+                }));
+              }}
+            />
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
@@ -766,11 +551,13 @@ export function StockManagement() {
                 onClick={() => {
                   setNewProduct(initialNewProduct);
                   setIsAddDialogOpen(false);
+                  newProductEntityIdRef.current = makeId();
                 }}
                 disabled={isAddingProduct}
               >
                 Cancelar
               </Button>
+
               <Button onClick={addProduct} disabled={isAddingProduct}>
                 {isAddingProduct ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -784,13 +571,15 @@ export function StockManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      <CategoriesModal open={categoriesOpen} onOpenChange={setCategoriesOpen} />
+
+      {/* DELETE CONFIRM */}
       <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente "{productToDelete?.name}". Esta acción no se puede deshacer.
+              Esta acción eliminará permanentemente "{productToDelete?.name ?? ""}". No se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -804,6 +593,8 @@ export function StockManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FeaturedProductsModal open={featuredOpen} onOpenChange={setFeaturedOpen} />
     </div>
   );
 }

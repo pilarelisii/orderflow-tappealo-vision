@@ -1,161 +1,168 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState, useRef } from "react";
 import { Order, OrderStatus } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
-// Helper to map DB row to Order type
-const mapToOrder = (row: Record<string, unknown>): Order => ({
-  id: row.id as string,
-  items: row.items as Order['items'],
-  comentarios_generales: (row.comentarios_generales as string) ?? null,
-  lugar_entrega: row.lugar_entrega as string,
-  telefono: (row.telefono as string) ?? null,
-  nombre: (row.nombre as string) ?? null,
-  payment_method: (row.payment_method as string) ?? null,
-  total: row.total as number,
-  status: row.status as OrderStatus,
-  created_at: row.created_at as string,
-  updated_at: row.updated_at as string,
+import { useAuth } from "@/hooks/useAuth";
+
+import { db } from "@/integrations/firebase/client";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  doc,
+  Timestamp,
+} from "firebase/firestore";
+import { useQrLocationsMap } from "./useQrLocationsMap";
+
+const toIso = (v: any) => {
+  if (!v) return new Date().toISOString();
+  if (typeof v === "string") return new Date(v).toISOString();
+  if (v instanceof Timestamp) return v.toDate().toISOString();
+  if (v?.toDate) return v.toDate().toISOString();
+  return new Date().toISOString();
+};
+
+const mapDocToOrder = (id: string, data: any): Order => ({
+  id,
+  items: data.items ?? [],
+  additional_comments: data.additional_comments ?? null,
+  qr_location_id: data.qr_location_id ?? "sin-ubicacion",
+  phone: data.phone ?? null,
+  name: data.name ?? null, // ✅ FIX (antes decía data.nombre)
+  total: Number(data.total ?? 0),
+  status: (data.status ?? "entrante") as OrderStatus,
+  created_at: toIso(data.created_at),
+  updated_at: toIso(data.updated_at),
+  ref_order_id: data.ref_order_id ?? null,
+  payment_method: data.payment_method ?? null,
+  venue_id: data.venue_id ?? null,
 });
 
 export function useOrders() {
+  const { venue } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
   const { toast } = useToast();
   const { playNotificationSound } = useNotificationSound();
-  const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching orders:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los pedidos",
-        variant: "destructive",
-      });
+  // ✅ qrMap sin romper deps
+  const qrMap = useQrLocationsMap(venue?.id);
+  const qrMapRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    qrMapRef.current = qrMap || {};
+  }, [qrMap]);
+
+  // ✅ refs estables
+  const toastRef = useRef(toast);
+  const playNotificationSoundRef = useRef(playNotificationSound);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+  useEffect(() => {
+    playNotificationSoundRef.current = playNotificationSound;
+  }, [playNotificationSound]);
+
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!venue?.id) {
+      setOrders([]);
+      setLoading(false);
+      initialized.current = false;
       return;
     }
 
-    setOrders(data.map(d => mapToOrder(d as Record<string, unknown>)));
-    setLoading(false);
-  };
+    setLoading(true);
+
+    // ✅ NO orderBy: evita depender de índices y evita problemas de timestamp/campos
+    const q = query(
+      collection(db, "orders"),
+      where("venue_id", "==", venue.id)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      { includeMetadataChanges: true }, // ✅ ayuda en algunos casos de cache/reconexión
+      (snapshot) => {
+        // ✅ ordenamos en JS
+        const list = snapshot.docs
+          .map((d) => mapDocToOrder(d.id, d.data()))
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+        // 🔔 notificaciones solo después del primer load
+        if (initialized.current) {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const o = mapDocToOrder(change.doc.id, change.doc.data());
+
+              playNotificationSoundRef.current();
+
+              toastRef.current?.({
+                title: "🔔 Nuevo pedido",
+                description: `Pedido recibido: ${
+                  qrMapRef.current[o.qr_location_id] ?? o.qr_location_id
+                }`,
+              });
+            }
+          });
+        }
+
+        setOrders(list);
+        setLoading(false);
+        initialized.current = true;
+      },
+      (error) => {
+        console.error("🔥 onSnapshot error:", error);
+        setLoading(false);
+        toastRef.current?.({
+          title: "Error",
+          description: "No se pudieron cargar los pedidos en tiempo real",
+          variant: "destructive",
+        });
+      }
+    );
+
+    return () => unsubscribe();
+  }, [venue?.id]);
 
   const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', order.id);
-
-    if (error) {
-      console.error('Error updating order:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el pedido",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Pedido actualizado",
-      description: `Pedido movido a ${newStatus}`,
+    await updateDoc(doc(db, "orders", order.id), {
+      status: newStatus,
+      updated_at: Timestamp.now(),
     });
   };
 
-  useEffect(() => {
-    fetchOrders();
-
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('orders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          console.log('Realtime update:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newOrder = mapToOrder(payload.new as Record<string, unknown>);
-            setOrders(prev => [newOrder, ...prev]);
-            
-            // Play notification sound for new orders
-            playNotificationSound();
-            
-            toast({
-              title: "🔔 Nuevo pedido",
-              description: `Pedido recibido: ${newOrder.lugar_entrega}`,
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedOrder = mapToOrder(payload.new as Record<string, unknown>);
-            setOrders(prev => 
-              prev.map(o => o.id === updatedOrder.id ? updatedOrder : o)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedId = (payload.old as Record<string, unknown>).id as string;
-            setOrders(prev => prev.filter(o => o.id !== deletedId));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   const isOrderRecent = (order: Order) => {
-    const now = new Date();
-    const orderDate = new Date(order.created_at);
-    const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
-    return hoursDiff <= 24;
+    const now = Date.now();
+    const created = new Date(order.created_at).getTime();
+    return now - created <= 24 * 60 * 60 * 1000;
   };
 
-  const getOrdersByStatus = (status: OrderStatus) => {
-    const filtered = orders.filter(order => order.status === status);
-    
-    // All columns only show orders created in the last 24h
-    return filtered.filter(isOrderRecent);
-  };
+  const getOrdersByStatus = (status: OrderStatus) =>
+    orders.filter((o) => o.status === status).filter(isOrderRecent);
 
   const getOrdersByDate = (date: Date) => {
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    
-    return orders.filter(order => {
-      const orderDate = new Date(order.created_at);
-      orderDate.setHours(0, 0, 0, 0);
-      
-      // Check if it's from the target date AND older than 24h
-      if (orderDate.getTime() !== targetDate.getTime()) return false;
-      
-      const now = new Date();
-      const hoursDiff = (now.getTime() - new Date(order.created_at).getTime()) / (1000 * 60 * 60);
-      return hoursDiff > 24;
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+
+    return orders.filter((order) => {
+      const d = new Date(order.created_at);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === target.getTime();
     });
   };
 
   const getAvailableDates = () => {
     const dates = new Set<string>();
-    const now = new Date();
-    
-    orders.forEach(order => {
-      const orderDate = new Date(order.created_at);
-      const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
-      
-      // Only include orders older than 24h
-      if (hoursDiff > 24) {
-        const dateStr = orderDate.toISOString().split('T')[0];
-        dates.add(dateStr);
-      }
+    orders.forEach((order) => {
+      dates.add(new Date(order.created_at).toISOString().split("T")[0]);
     });
-    
     return Array.from(dates).sort((a, b) => b.localeCompare(a));
   };
 
@@ -166,6 +173,5 @@ export function useOrders() {
     getOrdersByDate,
     getAvailableDates,
     updateOrderStatus,
-    refetch: fetchOrders,
   };
 }

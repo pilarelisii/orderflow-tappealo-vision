@@ -8,6 +8,9 @@ import Login from "./pages/Login";
 import Stock from "./pages/Stock";
 import QRSettings from "./pages/QRSettings";
 import NotFound from "./pages/NotFound";
+import CommerceSettings from "./pages/CommerceSettings";
+import PrinterSettings from "./pages/PrinterSettings";
+import Promotions from "./pages/Promotions";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +26,9 @@ const App = () => (
           <Route path="/stock" element={<Stock />} />
           <Route path="/qr-settings" element={<QRSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/comercio-settings" element={<CommerceSettings />} />
+          <Route path="/printer-settings" element={<PrinterSettings />} />
+          <Route path="/promotions" element={<Promotions />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

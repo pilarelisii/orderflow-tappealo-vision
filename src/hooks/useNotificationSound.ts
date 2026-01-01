@@ -19,7 +19,7 @@ export function useNotificationSound() {
 
       const currentTime = ctx.currentTime;
 
-      // Create a more attention-grabbing notification sound
+      // Create a more attention-grabbing notification sound (prolonged)
       // First beep
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
@@ -28,9 +28,9 @@ export function useNotificationSound() {
       osc1.frequency.value = 880; // A5
       osc1.type = 'sine';
       gain1.gain.setValueAtTime(0.5, currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.2);
+      gain1.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.35);
       osc1.start(currentTime);
-      osc1.stop(currentTime + 0.2);
+      osc1.stop(currentTime + 0.35);
 
       // Second beep (higher)
       const osc2 = ctx.createOscillator();
@@ -39,10 +39,10 @@ export function useNotificationSound() {
       gain2.connect(ctx.destination);
       osc2.frequency.value = 1100; // C#6
       osc2.type = 'sine';
-      gain2.gain.setValueAtTime(0.5, currentTime + 0.25);
-      gain2.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.45);
-      osc2.start(currentTime + 0.25);
-      osc2.stop(currentTime + 0.45);
+      gain2.gain.setValueAtTime(0.5, currentTime + 0.45);
+      gain2.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.8);
+      osc2.start(currentTime + 0.45);
+      osc2.stop(currentTime + 0.8);
 
       // Third beep (highest, longer)
       const osc3 = ctx.createOscillator();
@@ -51,10 +51,22 @@ export function useNotificationSound() {
       gain3.connect(ctx.destination);
       osc3.frequency.value = 1320; // E6
       osc3.type = 'sine';
-      gain3.gain.setValueAtTime(0.6, currentTime + 0.5);
-      gain3.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.9);
-      osc3.start(currentTime + 0.5);
-      osc3.stop(currentTime + 0.9);
+      gain3.gain.setValueAtTime(0.6, currentTime + 0.9);
+      gain3.gain.exponentialRampToValueAtTime(0.01, currentTime + 1.5);
+      osc3.start(currentTime + 0.9);
+      osc3.stop(currentTime + 1.5);
+
+      // Fourth beep (repeat pattern for emphasis)
+      const osc4 = ctx.createOscillator();
+      const gain4 = ctx.createGain();
+      osc4.connect(gain4);
+      gain4.connect(ctx.destination);
+      osc4.frequency.value = 880; // A5
+      osc4.type = 'sine';
+      gain4.gain.setValueAtTime(0.4, currentTime + 1.6);
+      gain4.gain.exponentialRampToValueAtTime(0.01, currentTime + 2.0);
+      osc4.start(currentTime + 1.6);
+      osc4.stop(currentTime + 2.0);
 
     } catch (error) {
       console.error('Error playing notification sound:', error);

@@ -106,7 +106,7 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
       
       <div className="header">
         <h1>LA BICI</h1>
-        <p>Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
+        <p>Pedido #{order.ref_order_id}</p>
         <p>{formattedDate}</p>
       </div>
 
@@ -114,27 +114,27 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
         {order.items.map((item, idx) => (
           <div key={idx} className="item">
             <div className="item-header">
-              <span>{item.cantidad}x {item.item}</span>
+              <span>{item.quantity}x {item.name}</span>
             </div>
-            {item.descripcion && (
-              <div className="item-desc">→ {item.descripcion}</div>
+            {item.description && (
+              <div className="item-desc">→ {item.description}</div>
             )}
           </div>
         ))}
       </div>
 
       <div className="delivery">
-        <strong>Entrega:</strong> {order.lugar_entrega}
-        {order.telefono && (
+        <strong>Entrega:</strong> {order.qr_location_id}
+        {order.phone && (
           <div style={{ marginTop: '2mm' }}>
-            <strong>Tel:</strong> {order.telefono}
+            <strong>Tel:</strong> {order.phone}
           </div>
         )}
       </div>
 
-      {order.comentarios_generales && (
+      {order.additional_comments && (
         <div className="comments">
-          <strong>Notas:</strong> {order.comentarios_generales}
+          <strong>Notas:</strong> {order.additional_comments}
         </div>
       )}
 
