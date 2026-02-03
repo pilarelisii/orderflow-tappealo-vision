@@ -47,7 +47,7 @@ export function OrderHistory({ availableDates, getOrdersByDate }: OrderHistoryPr
   if (availableDates.length === 0) return null;
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 flex-1">
       <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
         <Calendar className="w-5 h-5" />
         Historial de Pedidos

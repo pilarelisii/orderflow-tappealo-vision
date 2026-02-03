@@ -52,7 +52,7 @@ import {
 
 import { db } from "@/integrations/firebase/client";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-
+import { downloadQRCodePDF } from "@/lib/downloadQRCodePDF";
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType; label: string }[] = [
   { value: "en_lugar", label: "En el lugar" },
   { value: "retiro", label: "Retiro" },
@@ -268,22 +268,22 @@ const QRSettings = () => {
     }
   };
 
-  const downloadQRCode = async (qrId: string, filename: string) => {
-    try {
-      const dataUrl = await QRCodeLib.toDataURL(buildQRUrl(qrId), {
-        width: 512,
-        margin: 2,
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `qr-${filename || qrId}.png`;
-      a.click();
-      toast.success("QR descargado");
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al generar QR");
-    }
-  };
+ const downloadQRCode = async (qrId: string, filename: string) => {
+		try {
+			const url = buildQRUrl(qrId);
+
+			await downloadQRCodePDF({
+				qrUrl: url,
+				qrName: filename || qrId,
+				restaurantLogoUrl: venue?.logo_url || null, // si lo tenés en venue
+				filename,
+			});
+
+			toast.success("PDF descargado");
+		} catch (e) {
+			toast.error("Error al generar el PDF");
+		}
+ };
 
   /* =======================
      RENDER

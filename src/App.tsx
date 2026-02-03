@@ -11,29 +11,52 @@ import NotFound from "./pages/NotFound";
 import CommerceSettings from "./pages/CommerceSettings";
 import PrinterSettings from "./pages/PrinterSettings";
 import Promotions from "./pages/Promotions";
+import AdminRoute from "./components/AdminRoute";
+import LoginAdmin from "./pages/LoginAdmin";
+import AdminHome from "./pages/AdminHome";
+import AdminCreateVenue from "./pages/AdminCreateVenues";
+
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Index />} />
-          <Route path="/stock" element={<Stock />} />
-          <Route path="/qr-settings" element={<QRSettings />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="/comercio-settings" element={<CommerceSettings />} />
-          <Route path="/printer-settings" element={<PrinterSettings />} />
-          <Route path="/promotions" element={<Promotions />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+	<QueryClientProvider client={queryClient}>
+		<TooltipProvider>
+			<Toaster />
+			<Sonner />
+			<BrowserRouter>
+				<Routes>
+					<Route path="/login" element={<Login />} />
+					<Route path="/login-admin" element={<LoginAdmin />} />
+					<Route
+						path="/admin"
+						element={
+							<AdminRoute>
+								<AdminHome />
+							</AdminRoute>
+						}
+					/>
+
+					<Route
+						path="/admin/create"
+						element={
+							<AdminRoute>
+								<AdminCreateVenue />
+							</AdminRoute>
+						}
+					/>
+					<Route path="/" element={<Index />} />
+					<Route path="/stock" element={<Stock />} />
+					<Route path="/qr-settings" element={<QRSettings />} />
+					{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+					<Route path="/comercio-settings" element={<CommerceSettings />} />
+					<Route path="/printer-settings" element={<PrinterSettings />} />
+					<Route path="/promotions" element={<Promotions />} />
+					<Route path="*" element={<NotFound />} />
+				</Routes>
+			</BrowserRouter>
+		</TooltipProvider>
+	</QueryClientProvider>
 );
 
 export default App;

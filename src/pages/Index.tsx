@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
+import Notifications from "@/components/Notifications";
 
 const columns: { title: string; status: OrderStatus }[] = [
   { title: "Pedido Entrante", status: "entrante" },
@@ -95,71 +96,70 @@ const Index = () => {
   if (ordersLoading) return <FullScreenLoader />;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <img src={tappealoLogo} alt="Tappealo" className="h-10" />
-          <div className="border-l border-border pl-4">
-            <p className="font-semibold text-foreground">{venue.name}</p>
-            <p className="text-xs text-muted-foreground">/{venue.slug}</p>
-          </div>
-        </div>
+		<div className="min-h-screen bg-background">
+			{/* Header */}
+			<header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
+				<div className="flex items-center gap-4">
+					<img src={tappealoLogo} alt="Tappealo" className="h-10" />
+					<div className="border-l border-border pl-4">
+						<p className="font-semibold text-foreground">{venue.name}</p>
+						<p className="text-xs text-muted-foreground">/{venue.slug}</p>
+					</div>
+				</div>
 
-        <div className="flex items-center gap-2">
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-72">
-              <SheetHeader>
-                <SheetTitle>Configuración</SheetTitle>
-              </SheetHeader>
-              <nav className="mt-6 flex flex-col gap-2">
-                <Link
-                  to="/stock"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">Menu</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
-                <Link
-                  to="/qr-settings"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <QrCode className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">QRs</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
-                <Link
-                  to="/promotions"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">Promociones</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
-                <Link
-                  to="/comercio-settings"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Store className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">Comercio</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
-                {/* <Link
+				<div className="flex items-center gap-2">
+					<Sheet>
+						<SheetTrigger asChild>
+							<Button variant="ghost" size="icon">
+								<Settings className="h-5 w-5" />
+							</Button>
+						</SheetTrigger>
+						<SheetContent side="right" className="w-72">
+							<SheetHeader>
+								<SheetTitle>Configuración</SheetTitle>
+							</SheetHeader>
+							<nav className="mt-6 flex flex-col gap-2">
+								<Link
+									to="/stock"
+									className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+								>
+									<div className="flex items-center gap-3">
+										<Package className="h-5 w-5 text-muted-foreground" />
+										<span className="font-medium">Menu</span>
+									</div>
+									<ChevronRight className="h-4 w-4 text-muted-foreground" />
+								</Link>
+								<Link
+									to="/qr-settings"
+									className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+								>
+									<div className="flex items-center gap-3">
+										<QrCode className="h-5 w-5 text-muted-foreground" />
+										<span className="font-medium">QRs</span>
+									</div>
+									<ChevronRight className="h-4 w-4 text-muted-foreground" />
+								</Link>
+								<Link
+									to="/promotions"
+									className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+								>
+									<div className="flex items-center gap-3">
+										<Tag className="h-5 w-5 text-muted-foreground" />
+										<span className="font-medium">Promociones</span>
+									</div>
+									<ChevronRight className="h-4 w-4 text-muted-foreground" />
+								</Link>
+								<Link
+									to="/comercio-settings"
+									className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+								>
+									<div className="flex items-center gap-3">
+										<Store className="h-5 w-5 text-muted-foreground" />
+										<span className="font-medium">Comercio</span>
+									</div>
+									<ChevronRight className="h-4 w-4 text-muted-foreground" />
+								</Link>
+								{/* <Link
                   to="/printer-settings"
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                 >
@@ -169,47 +169,50 @@ const Index = () => {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link> */}
-              </nav>
-            </SheetContent>
-          </Sheet>
+							</nav>
+						</SheetContent>
+					</Sheet>
 
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+					<Button variant="ghost" size="icon" onClick={handleLogout}>
+						<LogOut className="h-5 w-5" />
+					</Button>
+				</div>
+			</header>
 
-      {/* Subheader */}
-      <div className="px-6 py-4 bg-background">
-        <h1 className="text-2xl font-bold text-foreground">Comandas</h1>
-        <p className="text-muted-foreground">Panel de Gestión de Pedidos</p>
-      </div>
+			{/* Subheader */}
+			<div className="px-6 py-4 bg-background">
+				<h1 className="text-2xl font-bold text-foreground">Comandas</h1>
+				<p className="text-muted-foreground">Panel de Gestión de Pedidos</p>
+			</div>
 
-      {/* Columns */}
-      <main className="px-6 pb-6">
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {columns.map(({ title, status }, index) => (
-            <OrderColumn
-              key={status}
-              title={title}
-              status={status}
-              orders={getOrdersByStatus(status)}
-              onMoveNext={handleMoveNext}
-              onMovePrev={handleMovePrev}
-              canMoveNext={index < columns.length - 1}
-              canMovePrev={index > 0}
-              venueName={venue.name}
-            />
-          ))}
-        </div>
-
-        <OrderHistory
-          availableDates={getAvailableDates()}
-          getOrdersByDate={getOrdersByDate}
-        />
-      </main>
-    </div>
-  );
+			{/* Columns */}
+			<main className="px-6 pb-6">
+				<div className="flex gap-4 overflow-x-auto pb-4">
+					{columns.map(({ title, status }, index) => (
+						<OrderColumn
+							key={status}
+							title={title}
+							status={status}
+							orders={getOrdersByStatus(status)}
+							onMoveNext={handleMoveNext}
+							onMovePrev={handleMovePrev}
+							canMoveNext={index < columns.length - 1}
+							canMovePrev={index > 0}
+							venueName={venue.name}
+						/>
+					))}
+				</div>
+				<div className="w-full flex flex-row justify-between gap-14">
+					<OrderHistory
+						availableDates={getAvailableDates()}
+						getOrdersByDate={getOrdersByDate}
+					/>
+					<Notifications
+					/>
+				</div>
+			</main>
+		</div>
+	);
 };
 
 export default Index;

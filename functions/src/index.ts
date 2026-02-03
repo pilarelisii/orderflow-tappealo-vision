@@ -2,7 +2,8 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-
+export { adminCreateVenue } from "./adminCreateVenue";
+export { adminSetVenueEnabled } from './admin'
 import { getNextRefOrderId } from "./utils/utils";
 import type { OrderItem } from "./types/orderItem";
 import type { ResolvedVenue } from "./types/resolvedVenue";
@@ -397,35 +398,29 @@ app.post("/public/:slug/orders", async (req, res) => {
 const ORDER_STATUSES = ["entrante", "preparacion", "retirar", "enviar", "terminadas"] as const;
 type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-app.patch("/public/:slug/orders/:id/status", async (req, res) => {
+app.get("/public/:slug/orders/:id/status", async (req, res) => {
   const venue = req.venue!;
   const orderId = String(req.params.id || "").trim();
-  const nextStatus = String(req.body?.status || "").trim().toLowerCase() as OrderStatus;
-
   if (!orderId) return res.status(400).json({ error: "id es requerido" });
-  if (!ORDER_STATUSES.includes(nextStatus)) {
-    return res.status(400).json({ error: "status inválido" });
-  }
 
   try {
     const db = admin.firestore();
-    const ref = db.collection("orders").doc(orderId);
-    const snap = await ref.get();
-
+    const snap = await db.collection("orders").doc(orderId).get();
     if (!snap.exists) return res.status(404).json({ error: "Orden no encontrada" });
 
     const data = snap.data() as any;
     if (data.venue_id !== venue.id) return res.status(403).json({ error: "No autorizado" });
 
-    await ref.update({
-      status: nextStatus,
-      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    return res.json({
+      id: snap.id,
+      status: (data.status ?? "entrante") as OrderStatus,
+      qr_location_id: data.qr_location_id ?? "sin-ubicacion",
+      ref_order_id: data.ref_order_id ?? null,
+      updated_at: data.updated_at ?? null,
     });
-
-    return res.json({ ok: true, id: orderId, status: nextStatus });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Error actualizando status" });
+    return res.status(500).json({ error: "Error obteniendo status" });
   }
 });
 
@@ -498,6 +493,9 @@ app.get("/public/:slug/products/featured", async (req, res) => {
   }
 });
 
+/* =======================
+   POST /public/:slug/mp/preference
+   ======================= */
 app.post("/public/:slug/mp/preference", async (req, res) => {
   const venue = req.venue!;
   try {
@@ -610,6 +608,7 @@ app.post("/public/:slug/mp/preference", async (req, res) => {
   }
 });
 
+// MP webhook
 app.post("/mp/webhook/:venueId", async (req, res) => {
   try {
     const { venueId } = req.params;
@@ -695,6 +694,85 @@ app.post("/mp/webhook/:venueId", async (req, res) => {
   }
 });
 
+/* =======================
+   GET /public/:slug/qr_locations/:id
+   ======================= */
+app.get("/public/:slug/qr_locations/:id", async (req, res) => {
+  const venue = req.venue!;
+  const qrLocationId = String(req.params.id || "").trim();
+
+  if (!qrLocationId) return res.status(400).json({ error: "id es requerido" });
+
+  try {
+    const db = admin.firestore();
+
+    // 👇 tu colección real es "qr_locations" (según tu POST /orders)
+    const snap = await db.collection("qr_locations").doc(qrLocationId).get();
+
+    if (!snap.exists) {
+      return res.status(404).json({ found: false, id: qrLocationId, name: qrLocationId });
+    }
+
+    const data = snap.data() as any;
+
+    // 🔒 Asegurar que pertenece a este venue
+    if (String(data.venue_id) !== String(venue.id)) {
+      return res.status(403).json({ error: "QR no pertenece al venue" });
+    }
+
+    return res.json({
+      found: true,
+      id: snap.id,
+      name: data.name ?? qrLocationId,
+      type: data.delivery_type ?? null, // si lo tenés (en lugar/envio/etc)
+      enabled: Boolean(data.enabled ?? true),
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error cargando qr_location" });
+  }
+});
+
+/* =======================
+   POST /public/:slug/calls
+   ======================= */
+app.post("/public/:slug/calls", async (req, res) => {
+  const venue = req.venue!;
+  try {
+    const db = admin.firestore();
+
+    const qr_location_id = String(req.body?.qr_location_id ?? "").trim();
+    if (!qr_location_id) return res.status(400).json({ error: "Falta qr_location_id" });
+
+    // validar QR existe y pertenece al venue
+    const qrRef = db.collection("qr_locations").doc(qr_location_id);
+    const qrSnap = await qrRef.get();
+    if (!qrSnap.exists) return res.status(404).json({ error: "QR no encontrado" });
+
+    const qr = qrSnap.data() as any;
+    if (String(qr.venue_id) !== String(venue.id)) {
+      return res.status(403).json({ error: "QR no pertenece al venue" });
+    }
+
+    // crear call
+    const callRef = db.collection("calls").doc();
+    await callRef.set({
+      venue_id: venue.id,
+      qr_location_id,
+      qr_location_name: qr.name ?? null, // si tu qr_locations tiene "name"
+      seen: false,
+      resolved: false,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      seen_at: null,
+      resolved_at: null,
+    });
+
+    return res.status(201).json({ ok: true, call_id: callRef.id });
+  } catch (e) {
+    console.error("create call error:", e);
+    return res.status(500).json({ error: "Error creando llamada" });
+  }
+});
 /* =======================
    Export Cloud Function
    ======================= */

@@ -245,6 +245,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
       >
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger className="w-full text-left p-4 cursor-pointer">
+            <p className="font-medium text-foreground text-sm capitalize mb-3">#{order.ref_order_id}</p>
             {/* Location first - prominent */}
             
               <div className="flex items-center gap-2 mb-2 bg-primary/10 rounded-md px-2 py-1.5">
