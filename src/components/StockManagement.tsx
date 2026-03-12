@@ -276,325 +276,384 @@ export function StockManagement() {
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Productos</h3>
+		<div className="flex flex-col">
+			{/* Header */}
+			<div className="flex items-center justify-between pb-4 border-b border-border mb-4">
+				<h3 className="text-lg font-semibold text-foreground">Productos</h3>
 
-        <div className="flex items-center gap-2">
-          {isEditMode ? (
-            <>
-              <Button variant="outline" size="sm" onClick={cancelEdit} disabled={isSaving}>
-                <X className="h-4 w-4 mr-1" />
-                Cancelar
-              </Button>
-              <Button size="sm" onClick={saveAllChanges} disabled={isSaving}>
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-1" />
-                )}
-                Guardar
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={enterEditMode}>
-                <Pencil className="h-4 w-4 mr-1" />
-                Editar
-              </Button>
-              <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setCategoriesOpen(true)}>
-                Gestionar categorías
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setFeaturedOpen(true)}>
-                Productos destacados
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+				<div className="flex items-center gap-2">
+					{isEditMode ? (
+						<>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={cancelEdit}
+								disabled={isSaving}
+							>
+								<X className="h-4 w-4 mr-1" />
+								Cancelar
+							</Button>
+							<Button size="sm" onClick={saveAllChanges} disabled={isSaving}>
+								{isSaving ? (
+									<Loader2 className="h-4 w-4 mr-1 animate-spin" />
+								) : (
+									<Save className="h-4 w-4 mr-1" />
+								)}
+								Guardar
+							</Button>
+						</>
+					) : (
+						<>
+							<Button variant="outline" size="sm" onClick={enterEditMode}>
+								<Pencil className="h-4 w-4 mr-1" />
+								Editar
+							</Button>
+							<Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+								<Plus className="h-4 w-4 mr-1" />
+								Agregar
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setCategoriesOpen(true)}
+							>
+								Gestionar categorías
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setFeaturedOpen(true)}
+							>
+								Productos destacados
+							</Button>
+						</>
+					)}
+				</div>
+			</div>
 
-      <div className="pr-4">
-        <Accordion type="multiple" defaultValue={categories} className="w-full">
-          {categories.map((category) => (
-            <AccordionItem key={category} value={category}>
-              <AccordionTrigger className="text-base font-semibold px-1">
-                {getNameById(category)} ({getProductsByCategory(category).length})
-              </AccordionTrigger>
+			<div className="pr-4">
+				<Accordion type="multiple" defaultValue={categories} className="w-full">
+					{categories.map((category) => (
+						<AccordionItem key={category} value={category}>
+							<AccordionTrigger className="text-base font-semibold px-1">
+								{getNameById(category)} (
+								{getProductsByCategory(category).length})
+							</AccordionTrigger>
 
-              <AccordionContent>
-                <div className="space-y-3">
-                  {getProductsByCategory(category).map((product) => {
-                    const e = editedProducts[product.id];
+							<AccordionContent>
+								<div className="space-y-3">
+									{getProductsByCategory(category).map((product) => {
+										const e = editedProducts[product.id];
 
-                    return (
-                      <div
-                        key={product.id}
-                        className={`flex items-center gap-4 p-3 rounded-lg border border-border bg-card transition-opacity ${
-                          !product.enabled ? "opacity-50" : ""
-                        }`}
-                      >
-                        <Switch
-                          checked={product.enabled}
-                          onCheckedChange={() => onToggleProduct(product)}
-                          disabled={isEditMode}
-                        />
+										return (
+											<div
+												key={product.id}
+												className={`flex items-center gap-4 p-3 rounded-lg border border-border bg-card transition-opacity ${
+													!product.enabled ? "opacity-50" : ""
+												}`}
+											>
+												<Switch
+													checked={product.enabled}
+													onCheckedChange={() => onToggleProduct(product)}
+													disabled={isEditMode}
+												/>
 
-                        {/* Imagen */}
-                        <div className="flex-shrink-0 w-auto">
-                          {isEditMode ? (
-                            <div className="flex-shrink-0 w-[120px]">
-                            <ImageUploadBox
-                              label=" "
-                              venueId={venue.id}
-                              type="product"
-                              entityId={product.id}
-                              initialImage={e?.imagePreview ?? product.image_url ?? null}
-                              previousPath={e?.image_path ?? (product as any).image_path ?? null}
-                              onUploaded={({ url, path }) => {
-                                setEditedProducts((prev) => ({
-                                  ...prev,
-                                  [product.id]: {
-                                    ...prev[product.id],
-                                    image_url: url,
-                                    image_path: path,
-                                    imagePreview: url,
-                                  },
-                                }));
-                              }}
-                            />
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                              {product.image_url ? (
-                                <img
-                                  src={product.image_url}
-                                  alt={product.name ?? ""}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                          )}
-                        </div>
+												{/* Imagen */}
+												<div className="flex-shrink-0 w-auto">
+													{isEditMode ? (
+														<div className="flex-shrink-0 w-[120px]">
+															<ImageUploadBox
+																label=" "
+																venueId={venue.id}
+																type="product"
+																entityId={product.id}
+																initialImage={
+																	e?.imagePreview ?? product.image_url ?? null
+																}
+																previousPath={
+																	e?.image_path ??
+																	(product as any).image_path ??
+																	null
+																}
+																onUploaded={({ url, path }) => {
+																	setEditedProducts((prev) => ({
+																		...prev,
+																		[product.id]: {
+																			...prev[product.id],
+																			image_url: url,
+																			image_path: path,
+																			imagePreview: url,
+																		},
+																	}));
+																}}
+															/>
+														</div>
+													) : (
+														<div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+															{product.image_url ? (
+																<img
+																	src={product.image_url}
+																	alt={product.name ?? ""}
+																	className="w-full h-full object-cover"
+																/>
+															) : (
+																<ImageIcon className="h-5 w-5 text-muted-foreground" />
+															)}
+														</div>
+													)}
+												</div>
 
-                        <div className="flex-1 min-w-0">
-                          {isEditMode ? (
-                            <div className="space-y-2">
-                              <Input
-                                value={e?.name || ""}
-                                onChange={(ev) => handleFieldChange(product.id, "name", ev.target.value)}
-                                placeholder="Nombre del producto"
-                                className="h-8 text-sm font-medium"
-                                maxLength={100}
-                              />
-                            
-                              <div className="flex gap-2">
-                                <Input
-                                  value={e?.description || ""}
-                                  onChange={(ev) =>
-                                    handleFieldChange(product.id, "description", ev.target.value)
-                                  }
-                                  placeholder="Descripción (opcional)"
-                                  className="h-8 text-sm flex-1"
-                                  maxLength={200}
-                                />
+												<div className="flex-1 min-w-0">
+													{isEditMode ? (
+														<div className="space-y-2">
+															<Input
+																value={e?.name || ""}
+																onChange={(ev) =>
+																	handleFieldChange(
+																		product.id,
+																		"name",
+																		ev.target.value
+																	)
+																}
+																placeholder="Nombre del producto"
+																className="h-8 text-sm font-medium"
+																maxLength={100}
+															/>
 
-                                <div className="flex items-center gap-1">
-                                  <span className="text-sm text-muted-foreground">$</span>
-                                  <Input
-                                    type="number"
-                                    value={e?.price ?? 0}
-                                    onChange={(ev) =>
-                                      handleFieldChange(product.id, "price", Number(ev.target.value) || 0)
-                                    }
-                                    className="h-8 w-24 text-sm"
-                                    min={0}
-                                    step={1}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="font-medium text-foreground truncate">{product.name ?? ""}</p>
-                              <p className="text-sm text-muted-foreground truncate">
-                                {(product.description ?? "")} - ${product.price}
-                              </p>
-                            </>
-                          )}
-                        </div>
+															<div className="flex gap-2">
+																<Input
+																	value={e?.description || ""}
+																	onChange={(ev) =>
+																		handleFieldChange(
+																			product.id,
+																			"description",
+																			ev.target.value
+																		)
+																	}
+																	placeholder="Descripción (opcional)"
+																	className="h-8 text-sm flex-1"
+																	maxLength={200}
+																/>
 
-                        {isEditMode && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setProductToDelete(product)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
+																<div className="flex items-center gap-1">
+																	<span className="text-sm text-muted-foreground">
+																		$
+																	</span>
+																	<Input
+																		type="number"
+																		value={e?.price ?? 0}
+																		onChange={(ev) =>
+																			handleFieldChange(
+																				product.id,
+																				"price",
+																				Number(ev.target.value) || 0
+																			)
+																		}
+																		className="h-8 w-24 text-sm"
+																		min={0}
+																		step={1}
+																	/>
+																</div>
+															</div>
+														</div>
+													) : (
+														<>
+															<p className="font-medium text-foreground truncate">
+																{product.name ?? ""}
+															</p>
+															<p className="text-sm text-muted-foreground truncate">
+																{product.description ?? ""} - ${product.price}
+															</p>
+														</>
+													)}
+												</div>
 
-      {/* ADD PRODUCT DIALOG */}
-      <Dialog
-        open={isAddDialogOpen}
-        onOpenChange={(open) => {
-          setIsAddDialogOpen(open);
-          if (!open) {
-            setNewProduct(initialNewProduct);
-            newProductEntityIdRef.current = makeId();
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Agregar Producto</DialogTitle>
-          </DialogHeader>
+												{isEditMode && (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="text-destructive hover:text-destructive hover:bg-destructive/10"
+														onClick={() => setProductToDelete(product)}
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												)}
+											</div>
+										);
+									})}
+								</div>
+							</AccordionContent>
+						</AccordionItem>
+					))}
+				</Accordion>
+			</div>
 
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-name">Nombre *</Label>
-              <Input
-                id="new-name"
-                value={newProduct.name}
-                onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))}
-                placeholder="Nombre del producto"
-                maxLength={100}
-              />
-            </div>
+			{/* ADD PRODUCT DIALOG */}
+			<Dialog
+				open={isAddDialogOpen}
+				onOpenChange={(open) => {
+					setIsAddDialogOpen(open);
+					if (!open) {
+						setNewProduct(initialNewProduct);
+						newProductEntityIdRef.current = makeId();
+					}
+				}}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Agregar Producto</DialogTitle>
+					</DialogHeader>
 
-            <div className="space-y-2">
-              <Label htmlFor="new-description">Descripción</Label>
-              <Input
-                id="new-description"
-                value={newProduct.description}
-                onChange={(e) => setNewProduct((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Descripción (opcional)"
-                maxLength={200}
-              />
-            </div>
+					<div className="space-y-4 pt-4">
+						<div className="space-y-2">
+							<Label htmlFor="new-name">Nombre *</Label>
+							<Input
+								id="new-name"
+								value={newProduct.name}
+								onChange={(e) =>
+									setNewProduct((p) => ({ ...p, name: e.target.value }))
+								}
+								placeholder="Nombre del producto"
+								maxLength={100}
+							/>
+						</div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-price">Precio *</Label>
-                <Input
-                  id="new-price"
-                  type="number"
-                  value={newProduct.price || ""}
-                  onChange={(e) => setNewProduct((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
-                  placeholder="0"
-                  min={0}
-                />
-              </div>
-            </div>
+						<div className="space-y-2">
+							<Label htmlFor="new-description">Descripción</Label>
+							<Input
+								id="new-description"
+								value={newProduct.description}
+								onChange={(e) =>
+									setNewProduct((p) => ({ ...p, description: e.target.value }))
+								}
+								placeholder="Descripción (opcional)"
+								maxLength={200}
+							/>
+						</div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Categoría *</Label>
-                <Button variant="outline" size="sm" onClick={() => setCategoriesOpen(true)}>
-                  Gestionar categorías
-                </Button>
-              </div>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="new-price">Precio *</Label>
+								<Input
+									id="new-price"
+									type="number"
+									value={newProduct.price || ""}
+									onChange={(e) =>
+										setNewProduct((p) => ({
+											...p,
+											price: Number(e.target.value) || 0,
+										}))
+									}
+									placeholder="0"
+									min={0}
+								/>
+							</div>
+						</div>
 
-              <Select
-                value={newProduct.category}
-                onValueChange={(value) => setNewProduct((p) => ({ ...p, category: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {enabledCategories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<Label>Categoría *</Label>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setCategoriesOpen(true)}
+								>
+									Gestionar categorías
+								</Button>
+							</div>
 
-            <ImageUploadBox
-              label="Imagen"
-              venueId={venue.id}
-              type="product"
-              entityId={newProductEntityIdRef.current}
-              initialImage={newProduct.image_url}
-              previousPath={newProduct.image_path}
-              onUploaded={({ url, path }) => {
-                setNewProduct((prev) => ({
-                  ...prev,
-                  image_url: url,
-                  image_path: path,
-                  imagePreview: url,
-                }));
-              }}
-            />
+							<Select
+								value={newProduct.category}
+								onValueChange={(value) =>
+									setNewProduct((p) => ({ ...p, category: value }))
+								}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Seleccionar categoría" />
+								</SelectTrigger>
+								<SelectContent>
+									{enabledCategories.map((cat) => (
+										<SelectItem key={cat.id} value={cat.id}>
+											{cat.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setNewProduct(initialNewProduct);
-                  setIsAddDialogOpen(false);
-                  newProductEntityIdRef.current = makeId();
-                }}
-                disabled={isAddingProduct}
-              >
-                Cancelar
-              </Button>
+						<ImageUploadBox
+							label="Imagen"
+							venueId={venue.id}
+							type="product"
+							entityId={newProductEntityIdRef.current}
+							initialImage={newProduct.image_url}
+							previousPath={newProduct.image_path}
+							onUploaded={({ url, path }) => {
+								setNewProduct((prev) => ({
+									...prev,
+									image_url: url,
+									image_path: path,
+									imagePreview: url,
+								}));
+							}}
+						/>
 
-              <Button onClick={addProduct} disabled={isAddingProduct}>
-                {isAddingProduct ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4 mr-1" />
-                )}
-                Agregar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+						<div className="flex justify-end gap-2 pt-4">
+							<Button
+								variant="outline"
+								onClick={() => {
+									setNewProduct(initialNewProduct);
+									setIsAddDialogOpen(false);
+									newProductEntityIdRef.current = makeId();
+								}}
+								disabled={isAddingProduct}
+							>
+								Cancelar
+							</Button>
 
-      <CategoriesModal open={categoriesOpen} onOpenChange={setCategoriesOpen} />
+							<Button onClick={addProduct} disabled={isAddingProduct}>
+								{isAddingProduct ? (
+									<Loader2 className="h-4 w-4 mr-1 animate-spin" />
+								) : (
+									<Plus className="h-4 w-4 mr-1" />
+								)}
+								Agregar
+							</Button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
 
-      {/* DELETE CONFIRM */}
-      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará permanentemente "{productToDelete?.name ?? ""}". No se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={deleteProduct}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+			<CategoriesModal open={categoriesOpen} onOpenChange={setCategoriesOpen} />
 
-      <FeaturedProductsModal open={featuredOpen} onOpenChange={setFeaturedOpen} />
-    </div>
-  );
+			{/* DELETE CONFIRM */}
+			<AlertDialog
+				open={!!productToDelete}
+				onOpenChange={(open) => !open && setProductToDelete(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Esta acción eliminará permanentemente "
+							{productToDelete?.name ?? ""}". No se puede deshacer.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancelar</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={deleteProduct}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Eliminar
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+			<FeaturedProductsModal
+				open={featuredOpen}
+				onOpenChange={setFeaturedOpen}
+			/>
+		</div>
+	);
 }

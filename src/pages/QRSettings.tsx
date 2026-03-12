@@ -253,7 +253,7 @@ const QRSettings = () => {
   const buildQRUrl = (qrId: string) => {
     const slug = (venue?.slug || "").trim().toLowerCase();
     if (!slug) return "";
-    return `https://${slug}.${MENU_DOMAIN}/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
+    return `https://${slug}.${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
   };
 
   const copyToClipboard = async (qrId: string) => {
