@@ -182,18 +182,40 @@ const ComercioSettings = () => {
 				: null;
 
 			// 2) Subir logo primero (si hay archivo)
+			// 2) Subir logo primero (si hay archivo)
 			if (logoFile) {
-				const ext = (logoFile.name.split(".").pop() || "jpg").toLowerCase();
-				const path = `venues/${venue.id}/logo/logo.${ext}`; // ✅ fijo (se reemplaza)
-				const fileRef = ref(storage, path);
+				try {
+					const ext = (logoFile.name.split(".").pop() || "jpg").toLowerCase();
+					const path = `venues/${venue.id}/logo/logo.${ext}`;
+					const fileRef = ref(storage, path);
 
-				await uploadBytes(fileRef, logoFile, {
-					contentType: logoFile.type || "image/jpeg",
-					cacheControl: "public,max-age=31536000",
-				});
+					console.log("SUBIENDO LOGO...");
+					console.log("venue.id:", venue.id);
+					console.log("path:", path);
+					console.log("logoFile:", {
+						name: logoFile.name,
+						type: logoFile.type,
+						size: logoFile.size,
+					});
 
-				nextLogoUrl = await getDownloadURL(fileRef);
-				nextLogoPath = path;
+					await uploadBytes(fileRef, logoFile, {
+						contentType: logoFile.type || "image/jpeg",
+						cacheControl: "public,max-age=31536000",
+					});
+
+					console.log("UPLOAD OK");
+
+					nextLogoUrl = await getDownloadURL(fileRef);
+					nextLogoPath = path;
+
+					console.log("DOWNLOAD URL:", nextLogoUrl);
+				} catch (err: any) {
+					console.error("ERROR SUBIENDO LOGO:", err);
+					console.error("error.code:", err?.code);
+					console.error("error.message:", err?.message);
+					toast.error(`Error subiendo logo: ${err?.message || "desconocido"}`);
+					throw err;
+				}
 			}
 
 			// 3) Guardar venue (una sola vez)

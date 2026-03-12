@@ -141,7 +141,7 @@ app.get("/public/:slug/venue", async (req, res) => {
       name: data.name ?? null,
       service_active: Boolean(data.service_active),
       menu_version: Number(data.menu_version ?? 1),
-
+      logo_url: data.logo_url ?? null,
       phone: data.phone ?? null,
       location_link: data.location_link ?? null,
       social_link: data.social_link ?? null,
