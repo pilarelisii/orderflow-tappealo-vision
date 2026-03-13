@@ -1,4 +1,4 @@
-export type DeliveryType = 'envio' | 'retiro' | 'en_lugar' | 'retiro_envio';
+export type DeliveryType = 'envio' | 'retiro' | 'en_lugar';
 
 export interface QRLocation {
   id: string;

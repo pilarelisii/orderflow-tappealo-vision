@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import QRCodeLib from "qrcode";
 import tappealoLogo from "@/assets/tappealo-logo.png";
+import { downloadAllQRCodesPDF } from "@/lib/downloadAllQRCodesPDF";
 
 import {
   Table,
@@ -57,7 +58,6 @@ const DELIVERY_TYPE_OPTIONS: { value: DeliveryType; label: string }[] = [
   { value: "en_lugar", label: "En el lugar" },
   { value: "retiro", label: "Retiro" },
   { value: "envio", label: "Envío" },
-  { value: "retiro_envio", label: "Retiro / Envío" },
 ];
 
 const FullScreenLoader = () => (
@@ -285,6 +285,31 @@ const QRSettings = () => {
 		}
  };
 
+ const downloadAllQRCodes = async () => {
+		try {
+			if (!qrs.length) {
+				toast.error("No hay QRs para descargar");
+				return;
+			}
+
+			const items = qrs.map((qr) => ({
+				id: qr.id,
+				name: qr.name || qr.id,
+				url: buildQRUrl(qr.id),
+			}));
+
+			await downloadAllQRCodesPDF({
+				items,
+				restaurantLogoUrl: venue?.logo_url || null,
+				filename: `qr-${venue?.slug || "comercio"}`,
+			});
+
+			toast.success("PDF generado");
+		} catch (e) {
+			console.error(e);
+			toast.error("Error al generar el PDF");
+		}
+ };
   /* =======================
      RENDER
      ======================= */
@@ -292,252 +317,257 @@ const QRSettings = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <img src={tappealoLogo} alt="Tappealo" className="h-10" />
-        </div>
-      </header>
+		<div className="min-h-screen bg-background">
+			<header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
+				<div className="flex items-center gap-4">
+					<Button variant="ghost" size="icon" asChild>
+						<Link to="/">
+							<ArrowLeft className="h-5 w-5" />
+						</Link>
+					</Button>
+					<img src={tappealoLogo} alt="Tappealo" className="h-10" />
+				</div>
+			</header>
 
-      <main className="px-6 py-8 max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Store className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Configuración</h1>
-            <p className="text-muted-foreground">Gestiona tu comercio, servicio y códigos QR</p>
-          </div>
-        </div>
+			<main className="px-6 py-8 max-w-4xl mx-auto">
+				<div className="flex items-center gap-3 mb-8">
+					<Store className="h-8 w-8 text-primary" />
+					<div>
+						<h1 className="text-2xl font-bold text-foreground">
+							Configuración
+						</h1>
+						<p className="text-muted-foreground">
+							Gestiona tu comercio, servicio y códigos QR
+						</p>
+					</div>
+				</div>
 
-        {/* Service Toggle */}
-        <div className="bg-card border border-border rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="service-toggle" className="text-base font-medium">
-                Servicio Activo
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {serviceActive
-                  ? "El menú está disponible para recibir pedidos"
-                  : "El menú está cerrado, no se pueden realizar pedidos"}
-              </p>
-            </div>
-            <Switch
-              id="service-toggle"
-              checked={serviceActive}
-              onCheckedChange={handleToggleService}
-              disabled={updating}
-            />
-          </div>
-        </div>
+				{/* Service Toggle */}
+				<div className="bg-card border border-border rounded-lg p-6 mb-6">
+					<div className="flex items-center justify-between">
+						<div className="space-y-1">
+							<Label htmlFor="service-toggle" className="text-base font-medium">
+								Servicio Activo
+							</Label>
+							<p className="text-sm text-muted-foreground">
+								{serviceActive
+									? "El menú está disponible para recibir pedidos"
+									: "El menú está cerrado, no se pueden realizar pedidos"}
+							</p>
+						</div>
+						<Switch
+							id="service-toggle"
+							checked={serviceActive}
+							onCheckedChange={handleToggleService}
+							disabled={updating}
+						/>
+					</div>
+				</div>
 
-        {/* QRs */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Códigos QR</h2>
-              <p className="text-sm text-muted-foreground">
-                El parámetro <b>utm_campaign</b> es el <b>ID</b> del QR.
-              </p>
-            </div>
+				{/* QRs */}
+				<div className="bg-card border border-border rounded-lg p-6">
+					<div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+						<div>
+							<h2 className="text-lg font-semibold text-foreground">
+								Códigos QR
+							</h2>
+						</div>
 
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Agregar QR
-                </Button>
-              </DialogTrigger>
+						<div className="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={downloadAllQRCodes}
+								disabled={!qrs.length}
+							>
+								<Download className="h-4 w-4 mr-2" />
+								Descargar todos
+							</Button>
 
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Agregar nuevo QR</DialogTitle>
-                </DialogHeader>
+							<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+								<DialogTrigger asChild>
+									<Button size="sm">
+										<Plus className="h-4 w-4 mr-2" />
+										Agregar QR
+									</Button>
+								</DialogTrigger>
 
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="qr-name">Nombre</Label>
-                    <Input
-                      id="qr-name"
-                      placeholder="Ej: Mesa 1 / Caja / Delivery"
-                      value={newQRName}
-                      onChange={(e) => setNewQRName(e.target.value)}
-                    />
-                  </div>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Agregar nuevo QR</DialogTitle>
+									</DialogHeader>
 
-                  <div className="space-y-2">
-                    <Label>Tipo de entrega</Label>
-                    <Select value={newQRDeliveryType} onValueChange={(v) => setNewQRDeliveryType(v as DeliveryType)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DELIVERY_TYPE_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+									<div className="space-y-4 pt-4">
+										<div className="space-y-2">
+											<Label htmlFor="qr-name">Nombre</Label>
+											<Input
+												id="qr-name"
+												placeholder="Ej: Mesa 1 / Caja / Delivery"
+												value={newQRName}
+												onChange={(e) => setNewQRName(e.target.value)}
+											/>
+										</div>
 
-                  <Button onClick={handleAddQR} disabled={!newQRName.trim() || addingQR} className="w-full">
-                    {addingQR ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Agregar
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+										<div className="space-y-2">
+											<Label>Tipo de entrega</Label>
+											<Select
+												value={newQRDeliveryType}
+												onValueChange={(v) =>
+													setNewQRDeliveryType(v as DeliveryType)
+												}
+											>
+												<SelectTrigger>
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													{DELIVERY_TYPE_OPTIONS.map((o) => (
+														<SelectItem key={o.value} value={o.value}>
+															{o.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
 
-            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Editar QR</DialogTitle>
-                </DialogHeader>
+										<Button
+											onClick={handleAddQR}
+											disabled={!newQRName.trim() || addingQR}
+											className="w-full"
+										>
+											{addingQR ? (
+												<Loader2 className="h-4 w-4 animate-spin mr-2" />
+											) : null}
+											Agregar
+										</Button>
+									</div>
+								</DialogContent>
+							</Dialog>
+						</div>
+					</div>
 
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-qr-name">Nombre</Label>
-                    <Input
-                      id="edit-qr-name"
-                      value={editQRName}
-                      onChange={(e) => setEditQRName(e.target.value)}
-                    />
-                  </div>
+					{loadingQRs ? (
+						<div className="flex justify-center py-8">
+							<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+						</div>
+					) : qrs.length === 0 ? (
+						<div className="text-center py-8 text-muted-foreground">
+							<QrCode className="h-12 w-12 mx-auto mb-3 opacity-50" />
+							<p>No hay QRs configurados</p>
+							<p className="text-sm">Agregá tu primer QR para empezar</p>
+						</div>
+					) : (
+						<div className="overflow-x-auto">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead className="w-[220px]">Nombre</TableHead>
+										<TableHead>URL</TableHead>
+										<TableHead className="w-[180px]">Tipo</TableHead>
+										<TableHead className="w-[50px]" />
+										<TableHead className="w-[50px]" />
+										<TableHead className="w-[50px]" />
+									</TableRow>
+								</TableHeader>
 
-                  {editingQR?.id ? (
-                    <p className="text-sm text-muted-foreground">
-                      URL: {buildQRUrl(editingQR.id)}
-                    </p>
-                  ) : null}
+								<TableBody>
+									{qrs.map((qr) => (
+										<TableRow key={qr.id}>
+											<TableCell className="font-medium">
+												{qr.name || "(sin nombre)"}
+											</TableCell>
 
-                  <Button onClick={handleEditQR} disabled={!editQRName.trim() || savingEdit} className="w-full">
-                    {savingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Guardar cambios
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+											<TableCell>
+												<div className="flex items-center gap-2">
+													<span className="text-sm text-muted-foreground truncate max-w-[340px]">
+														{buildQRUrl(qr.id)}
+													</span>
 
-          {loadingQRs ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : qrs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <QrCode className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No hay QRs configurados</p>
-              <p className="text-sm">Agregá tu primer QR para empezar</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[220px]">Nombre</TableHead>
-                    <TableHead>URL</TableHead>
-                    <TableHead className="w-[180px]">Tipo</TableHead>
-                    <TableHead className="w-[50px]" />
-                    <TableHead className="w-[50px]" />
-                    <TableHead className="w-[50px]" />
-                  </TableRow>
-                </TableHeader>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8 shrink-0"
+														onClick={() => copyToClipboard(qr.id)}
+														title="Copiar URL"
+													>
+														{copiedId === qr.id ? (
+															<Check className="h-4 w-4 text-green-600" />
+														) : (
+															<Copy className="h-4 w-4" />
+														)}
+													</Button>
+												</div>
+											</TableCell>
 
-                <TableBody>
-                  {qrs.map((qr) => (
-                    <TableRow key={qr.id}>
-                      <TableCell className="font-medium">{qr.name || "(sin nombre)"}</TableCell>
+											<TableCell>
+												<Select
+													value={qr.delivery_type}
+													onValueChange={(value) =>
+														handleDeliveryTypeChange(
+															qr.id,
+															value as DeliveryType
+														)
+													}
+												>
+													<SelectTrigger className="h-9">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{DELIVERY_TYPE_OPTIONS.map((o) => (
+															<SelectItem key={o.value} value={o.value}>
+																{o.label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</TableCell>
 
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground truncate max-w-[340px]">
-                            {buildQRUrl(qr.id)}
-                          </span>
+											<TableCell>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8"
+													onClick={() =>
+														downloadQRCode(qr.id, qr.name || qr.id)
+													}
+													title="Descargar QR"
+												>
+													<Download className="h-4 w-4" />
+												</Button>
+											</TableCell>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0"
-                            onClick={() => copyToClipboard(qr.id)}
-                            title="Copiar URL"
-                          >
-                            {copiedId === qr.id ? (
-                              <Check className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
+											<TableCell>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8"
+													onClick={() => openEditDialog(qr)}
+													title="Editar"
+												>
+													<Pencil className="h-4 w-4" />
+												</Button>
+											</TableCell>
 
-                      <TableCell>
-                        <Select
-                          value={qr.delivery_type}
-                          onValueChange={(value) => handleDeliveryTypeChange(qr.id, value as DeliveryType)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DELIVERY_TYPE_OPTIONS.map((o) => (
-                              <SelectItem key={o.value} value={o.value}>
-                                {o.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => downloadQRCode(qr.id, qr.name || qr.id)}
-                          title="Descargar QR"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEditDialog(qr)}
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteQR(qr.id)}
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+											<TableCell>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-destructive hover:text-destructive"
+													onClick={() => handleDeleteQR(qr.id)}
+													title="Eliminar"
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
+					)}
+				</div>
+			</main>
+		</div>
+	);
 };
 
 export default QRSettings;
