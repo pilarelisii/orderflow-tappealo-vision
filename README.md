@@ -1,73 +1,120 @@
-# Welcome to your Lovable project
+# Tappealo — Panel de Gestión
 
-## Project info
+Panel de administración para restaurantes que utilizan **Tappealo**, una plataforma de pedidos digitales mediante menú QR.
 
-**URL**: https://lovable.dev/projects/0365dfbb-f77e-4389-82eb-6d4747c815f6
+Permite administrar productos, categorías, pedidos, stock, pagos y configuraciones del comercio desde una interfaz web moderna.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+# 🚀 Tecnologías
 
-**Use Lovable**
+- **React**
+- **TypeScript**
+- **Vite**
+- **TailwindCSS**
+- **Shadcn UI**
+- **Firebase**
+  - Firestore
+  - Storage
+  - Authentication
+  - Cloud Functions
+- **Mercado Pago API**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/0365dfbb-f77e-4389-82eb-6d4747c815f6) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+# 🧠 Funcionalidades
 
-**Use your preferred IDE**
+## Gestión del menú
+- Crear / editar productos
+- Crear / editar categorías
+- Activar / desactivar productos
+- Control de stock
+- Importación de productos mediante Excel
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Pedidos
+- Visualización en tiempo real
+- Estados del pedido
+- Gestión de flujo de cocina
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Configuración del comercio
+- Logo del restaurante
+- Dirección
+- Link de Google Maps
+- Redes sociales
 
-Follow these steps:
+## Métodos de pago
+- Mercado Pago
+- Efectivo
+- Configuración de credenciales
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Gestión del menú QR
+- Generación de QR por mesa
+- Control del estado del servicio
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 📁 Estructura del proyecto
+src/
+components/ui > botones etc
+components/
+AdminRoute.tsx    Ruteo de admin              
+ImportProductsExcel.tsx         Componente de exportacion de excel para menu
+OrderColumn.tsx                 Columna de pedidos
+PromotionFormModal.tsx          Modal de promociones - form
+CategoriesModal.tsx             Modal de categorias - form
+NavLink.tsx                     Navegacion del sistema
+OrderHistory.tsx                Historial de pedidos
+PromotionItemsModal.tsx         Modal de lista de productos para el modal de promociones
+FeaturedProductsModal.tsx       Modal productos destacados
+Notifications.tsx               Notificaciones
+PrintableReceipt.tsx            Ticket para imprimir
+StockManagement.tsx             Pantalla Stock
+ImageUploadBox.tsx              Subir imagen
+OrderCard.tsx                   Card de las ordenes
+PromosManagement.tsx            Pantalla Promos
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+hooks/
+use-mobile.tsx          
+useAdminVenues.ts    obtener menues - admin   
+useCategories.ts      funciones de categorias
+usePaymentMehtods.ts   funciones de metodos de pagos
+useQZPrinter.ts  funciones de impresora - a futuro
+use-toast.ts     notificaciones
+useAuth.ts      funciones de autenticacion
+useNotificationSound.ts notificaciones - sonido
+useProducts.ts       funciones de productos
+useQrLocationsMap.ts  obtener nombre de qr a partir de id
+useAdminUsers.ts    funciones para administrar usuarios - admin
+useCalls.ts     funciones para llamadas de cliente - mozo    
+useOrders.ts    funciones para comandas
+usePromotions.ts      funciones para promociones
+useQrs.ts funciones para QR
+
+pages/ todas las pantallas
+
+integrations/firebase configuracion firebase
+assets
+lib
+
+# api
+functions/ api del sistema para que se conecte el menu publico
+index todos los endpoints 
+
+
+
+
+# 📁 EJECUTAR PROYECTO
+
 npm run dev
-```
 
-**Edit a file directly in GitHub**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# ⚙️ Instalación
 
-## What technologies are used for this project?
+```bash
+git clone 
+cd orderflow-tappealo-vision-1
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/0365dfbb-f77e-4389-82eb-6d4747c815f6) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+npm install
