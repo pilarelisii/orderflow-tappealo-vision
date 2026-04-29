@@ -32,12 +32,12 @@ const Stock = () => {
 			<header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
 				<div className="flex items-center gap-4">
 					<Button variant="ghost" size="icon" asChild>
-						<Link to="/">
+						<Link to="/panel">
 							<ArrowLeft className="h-5 w-5" />
 						</Link>
 					</Button>
 
-					<img src={tappealoLogo} alt="Tappealo" className="h-10" />
+					<img src={tappealoLogo} alt="Tappealo" className="w-16" />
 
 					{venue && (
 						<div className="border-l border-border pl-4">
@@ -50,7 +50,7 @@ const Stock = () => {
 
 			<main className="px-6 py-6">
 				<h1 className="text-2xl font-bold text-foreground mb-6">Menu</h1>
-				{venue?.id && <ImportProductsExcel venueId={venue.id} />}
+				{venue?.id && venue?.plan !== "demo" && <ImportProductsExcel venueId={venue.id} />}
 				<StockManagement />
 			</main>
 		</div>

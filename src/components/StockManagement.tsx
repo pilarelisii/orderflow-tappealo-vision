@@ -308,7 +308,8 @@ export function StockManagement() {
 								<Pencil className="h-4 w-4 mr-1" />
 								Editar
 							</Button>
-							<Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+							<Button size="sm" onClick={() => setIsAddDialogOpen(true)}
+							disabled={venue?.plan === "demo" && products.length >= 1}>
 								<Plus className="h-4 w-4 mr-1" />
 								Agregar
 							</Button>
@@ -316,6 +317,7 @@ export function StockManagement() {
 								variant="outline"
 								size="sm"
 								onClick={() => setCategoriesOpen(true)}
+								disabled={venue?.plan === "demo"}
 							>
 								Gestionar categorías
 							</Button>
@@ -323,6 +325,7 @@ export function StockManagement() {
 								variant="outline"
 								size="sm"
 								onClick={() => setFeaturedOpen(true)}
+								disabled={venue?.plan === "demo"}
 							>
 								Productos destacados
 							</Button>
@@ -557,6 +560,7 @@ export function StockManagement() {
 									variant="outline"
 									size="sm"
 									onClick={() => setCategoriesOpen(true)}
+									disabled={venue?.plan === "demo"}
 								>
 									Gestionar categorías
 								</Button>
@@ -567,6 +571,7 @@ export function StockManagement() {
 								onValueChange={(value) =>
 									setNewProduct((p) => ({ ...p, category: value }))
 								}
+								disabled={venue?.plan === "demo"}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Seleccionar categoría" />

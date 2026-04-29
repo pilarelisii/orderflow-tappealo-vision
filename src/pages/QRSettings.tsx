@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQrs } from "@/hooks/useQrs";
 import { QRLocation, DeliveryType } from "@/types/qrLocation";
 import {
-  Loader2,
-  ArrowLeft,
-  QrCode,
-  Plus,
-  Copy,
-  Check,
-  Trash2,
-  Download,
-  Pencil,
-  Store,
-  MapPin,
-  Phone,
+	Loader2,
+	ArrowLeft,
+	QrCode,
+	Plus,
+	Copy,
+	Check,
+	Trash2,
+	Download,
+	Pencil,
+	Store,
+	MapPin,
+	Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -27,248 +27,233 @@ import tappealoLogo from "@/assets/tappealo-logo.png";
 import { downloadAllQRCodesPDF } from "@/lib/downloadAllQRCodesPDF";
 
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
 } from "@/components/ui/table";
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
 
 import { db } from "@/integrations/firebase/client";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { downloadQRCodePDF } from "@/lib/downloadQRCodePDF";
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType; label: string }[] = [
-  { value: "en_lugar", label: "En el lugar" },
-  { value: "retiro", label: "Retiro" },
-  { value: "envio", label: "Envío" },
+	{ value: "en_lugar", label: "En el lugar" },
+	{ value: "retiro", label: "Retiro" },
+	{ value: "envio", label: "Envío" },
 ];
 
 const FullScreenLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-background">
-    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-  </div>
+	<div className="flex min-h-screen items-center justify-center bg-background">
+		<Loader2 className="w-8 h-8 animate-spin text-primary" />
+	</div>
 );
 
 const QRSettings = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading, venue } = useAuth();
+	const navigate = useNavigate();
+	const { isAuthenticated, loading: authLoading, venue } = useAuth();
 
-  // ✅ Venues (direct Firestore)
-  const [loadingVenue, setLoadingVenue] = useState(true);
-  const [serviceActive, setServiceActive] = useState(true);
-  const [updating, setUpdating] = useState(false);
+	// ✅ Venues (direct Firestore)
+	const [loadingVenue, setLoadingVenue] = useState(true);
+	const [serviceActive, setServiceActive] = useState(true);
+	const [updating, setUpdating] = useState(false);
 
-  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
-  const [venuePhone, setVenuePhone] = useState("");
-  const [savingCommerce, setSavingCommerce] = useState(false);
+	const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+	const [venuePhone, setVenuePhone] = useState("");
+	const [savingCommerce, setSavingCommerce] = useState(false);
 
-  // ✅ QRs (hook snapshot)
-  const { qrs, loading: loadingQRs, createQR, updateQR, deleteQR } = useQrs();
+	// ✅ QRs (hook snapshot)
+	const { qrs, loading: loadingQRs, createQR, updateQR, deleteQR } = useQrs();
 
-  // UI state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [addingQR, setAddingQR] = useState(false);
+	// UI state
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [addingQR, setAddingQR] = useState(false);
 
-  // 👇 antes era newQRCode (code). Ahora es name
-  const [newQRName, setNewQRName] = useState("");
-  const [newQRDeliveryType, setNewQRDeliveryType] = useState<DeliveryType>("en_lugar");
+	// 👇 antes era newQRCode (code). Ahora es name
+	const [newQRName, setNewQRName] = useState("");
+	const [newQRDeliveryType, setNewQRDeliveryType] =
+		useState<DeliveryType>("en_lugar");
 
-  const [editingQR, setEditingQR] = useState<QRLocation | null>(null);
-  const [editQRName, setEditQRName] = useState("");
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [savingEdit, setSavingEdit] = useState(false);
+	const [editingQR, setEditingQR] = useState<QRLocation | null>(null);
+	const [editQRName, setEditQRName] = useState("");
+	const [editDialogOpen, setEditDialogOpen] = useState(false);
+	const [savingEdit, setSavingEdit] = useState(false);
 
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+	const [copiedId, setCopiedId] = useState<string | null>(null);
 
 
-  /* =======================
+	/* =======================
      AUTH GUARD
      ======================= */
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) navigate("/login");
-  }, [authLoading, isAuthenticated, navigate]);
+	useEffect(() => {
+		if (!authLoading && !isAuthenticated) navigate("/login");
+	}, [authLoading, isAuthenticated, navigate]);
 
-  /* =======================
+	/* =======================
      LOAD VENUE
      ======================= */
-    useEffect(() => {
-    if (!venue?.id) return;
+	useEffect(() => {
+		if (!venue?.id) return;
 
-    const loadVenue = async () => {
-      setLoadingVenue(true);
-      try {
-        const snap = await getDoc(doc(db, "venues", venue.id));
-        if (!snap.exists()) throw new Error("Venue no existe en Firestore");
+		const loadVenue = async () => {
+			setLoadingVenue(true);
+			try {
+				const snap = await getDoc(doc(db, "venues", venue.id));
+				if (!snap.exists()) throw new Error("Venue no existe en Firestore");
 
-        const data = snap.data() as any;
-        setServiceActive(!!data.service_active);
-        setGoogleMapsUrl(data.google_maps_url || "");
-        setVenuePhone(data.phone || "");
-      } catch (e) {
-        console.error(e);
-        toast.error("Error al cargar datos del comercio");
-      } finally {
-        setLoadingVenue(false);
-      }
-    };
+				const data = snap.data() as any;
+				setServiceActive(!!data.service_active);
+				setGoogleMapsUrl(data.google_maps_url || "");
+				setVenuePhone(data.phone || "");
+			} catch (e) {
+				console.error(e);
+				toast.error("Error al cargar datos del comercio");
+			} finally {
+				setLoadingVenue(false);
+			}
+		};
 
-    loadVenue();
-  }, [venue?.id]);
+		loadVenue();
+	}, [venue?.id]);
 
-  /* =======================
+	/* =======================
      HANDLERS - VENUE
      ======================= */
-  const handleToggleService = async (checked: boolean) => {
-    if (!venue?.id) return;
+	const handleToggleService = async (checked: boolean) => {
+		if (!venue?.id) return;
 
-    setUpdating(true);
-    try {
-      await updateDoc(doc(db, "venues", venue.id), {
-        service_active: checked,
-        updated_at: serverTimestamp(),
-      });
-      setServiceActive(checked);
-      toast.success(checked ? "Servicio activado" : "Servicio desactivado");
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al actualizar servicio");
-    } finally {
-      setUpdating(false);
-    }
-  };
+		setUpdating(true);
+		try {
+			await updateDoc(doc(db, "venues", venue.id), {
+				service_active: checked,
+				updated_at: serverTimestamp(),
+			});
+			setServiceActive(checked);
+			toast.success(checked ? "Servicio activado" : "Servicio desactivado");
+		} catch (e) {
+			console.error(e);
+			toast.error("Error al actualizar servicio");
+		} finally {
+			setUpdating(false);
+		}
+	};
 
-  const handleSaveCommerce = async () => {
-    if (!venue?.id) return;
-
-    setSavingCommerce(true);
-    try {
-      await updateDoc(doc(db, "venues", venue.id), {
-        google_maps_url: googleMapsUrl || null,
-        phone: venuePhone || null,
-        updated_at: serverTimestamp(),
-      });
-      toast.success("Datos del comercio actualizados");
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al guardar datos");
-    } finally {
-      setSavingCommerce(false);
-    }
-  };
-
-  /* =======================
+	/* =======================
      HANDLERS - QRS (useQrs)
      ======================= */
-  const handleAddQR = async () => {
-    if (!newQRName.trim()) return;
+	const handleAddQR = async () => {
+		if (!newQRName.trim()) return;
 
-    setAddingQR(true);
-    try {
-      await createQR({
-        name: newQRName.trim(),
-        delivery_type: newQRDeliveryType,
-        enabled: true,
-      });
+		setAddingQR(true);
+		try {
+			await createQR({
+				name: newQRName.trim(),
+				delivery_type: newQRDeliveryType,
+				enabled: true,
+			});
 
-      setDialogOpen(false);
-      setNewQRName("");
-      setNewQRDeliveryType("en_lugar");
-      toast.success("QR agregado");
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Error al agregar QR");
-    } finally {
-      setAddingQR(false);
-    }
-  };
+			setDialogOpen(false);
+			setNewQRName("");
+			setNewQRDeliveryType("en_lugar");
+			toast.success("QR agregado");
+		} catch (e: any) {
+			console.error(e);
+			toast.error(e?.message || "Error al agregar QR");
+		} finally {
+			setAddingQR(false);
+		}
+	};
 
-  const handleDeliveryTypeChange = async (qrId: string, value: DeliveryType) => {
-    try {
-      await updateQR(qrId, { delivery_type: value });
-      toast.success("Tipo actualizado");
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Error al actualizar tipo");
-    }
-  };
+	const handleDeliveryTypeChange = async (
+		qrId: string,
+		value: DeliveryType
+	) => {
+		try {
+			await updateQR(qrId, { delivery_type: value });
+			toast.success("Tipo actualizado");
+		} catch (e: any) {
+			console.error(e);
+			toast.error(e?.message || "Error al actualizar tipo");
+		}
+	};
 
-  const handleDeleteQR = async (qrId: string) => {
-    try {
-      await deleteQR(qrId);
-      toast.success("QR eliminado");
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Error al eliminar QR");
-    }
-  };
+	const handleDeleteQR = async (qrId: string) => {
+		try {
+			await deleteQR(qrId);
+			toast.success("QR eliminado");
+		} catch (e: any) {
+			console.error(e);
+			toast.error(e?.message || "Error al eliminar QR");
+		}
+	};
 
-  const openEditDialog = (qr: QRLocation) => {
-    setEditingQR(qr);
-    setEditQRName(qr.name || "");
-    setEditDialogOpen(true);
-  };
+	const openEditDialog = (qr: QRLocation) => {
+		setEditingQR(qr);
+		setEditQRName(qr.name || "");
+		setEditDialogOpen(true);
+	};
 
-  const handleEditQR = async () => {
-    if (!editingQR) return;
+	const handleEditQR = async () => {
+		if (!editingQR) return;
 
-    setSavingEdit(true);
-    try {
-      const name = editQRName.trim();
-      if (!name) {
-        toast.error("Nombre inválido");
-        return;
-      }
+		setSavingEdit(true);
+		try {
+			const name = editQRName.trim();
+			if (!name) {
+				toast.error("Nombre inválido");
+				return;
+			}
 
-      await updateQR(editingQR.id, { name });
-      setEditDialogOpen(false);
-      setEditingQR(null);
-      toast.success("QR actualizado");
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Error al editar QR");
-    } finally {
-      setSavingEdit(false);
-    }
-  };
+			await updateQR(editingQR.id, { name });
+			setEditDialogOpen(false);
+			setEditingQR(null);
+			toast.success("QR actualizado");
+		} catch (e: any) {
+			console.error(e);
+			toast.error(e?.message || "Error al editar QR");
+		} finally {
+			setSavingEdit(false);
+		}
+	};
 
-  const MENU_DOMAIN = "tappealo.com"; // cambiá por tu dominio real
+	const MENU_DOMAIN = "tappealo.com"; // cambiá por tu dominio real
 
-  const buildQRUrl = (qrId: string) => {
-    const slug = (venue?.slug || "").trim().toLowerCase();
-    if (!slug) return "";
-    return `https://${slug}.${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
-  };
+	const buildQRUrl = (qrId: string) => {
+		const slug = (venue?.slug || "").trim().toLowerCase();
+		if (!slug) return "";
+		return `https://${slug}.${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
+	};
 
-  const copyToClipboard = async (qrId: string) => {
-    try {
-      await navigator.clipboard.writeText(buildQRUrl(qrId));
-      setCopiedId(qrId);
-      setTimeout(() => setCopiedId(null), 2000);
-      toast.success("URL copiada");
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al copiar");
-    }
-  };
+	const copyToClipboard = async (qrId: string) => {
+		try {
+			await navigator.clipboard.writeText(buildQRUrl(qrId));
+			setCopiedId(qrId);
+			setTimeout(() => setCopiedId(null), 2000);
+			toast.success("URL copiada");
+		} catch (e) {
+			console.error(e);
+			toast.error("Error al copiar");
+		}
+	};
 
- const downloadQRCode = async (qrId: string, filename: string) => {
+	const downloadQRCode = async (qrId: string, filename: string) => {
 		try {
 			const url = buildQRUrl(qrId);
 
@@ -283,9 +268,9 @@ const QRSettings = () => {
 		} catch (e) {
 			toast.error("Error al generar el PDF");
 		}
- };
+	};
 
- const downloadAllQRCodes = async () => {
+	const downloadAllQRCodes = async () => {
 		try {
 			if (!qrs.length) {
 				toast.error("No hay QRs para descargar");
@@ -309,35 +294,49 @@ const QRSettings = () => {
 			console.error(e);
 			toast.error("Error al generar el PDF");
 		}
- };
-  /* =======================
+	};
+
+	const qRDisabled = () => {
+		if (venue) { 
+			if(venue?.plan === "basico" && qrs.length >= 10){ 
+				return true;
+			} else if(venue?.plan === "pro" && qrs.length >= 20){ 
+				return true;
+			} else if(venue?.plan === "demo" && qrs.length >= 1){ 
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
+	/* =======================
      RENDER
      ======================= */
-  if (authLoading || loadingVenue) return <FullScreenLoader />;
-  if (!isAuthenticated) return null;
+	if (authLoading || loadingVenue) return <FullScreenLoader />;
+	if (!isAuthenticated) return null;
 
-  return (
+	return (
 		<div className="min-h-screen bg-background">
 			<header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
 				<div className="flex items-center gap-4">
 					<Button variant="ghost" size="icon" asChild>
-						<Link to="/">
+						<Link to="/panel">
 							<ArrowLeft className="h-5 w-5" />
 						</Link>
 					</Button>
-					<img src={tappealoLogo} alt="Tappealo" className="h-10" />
+					<img src={tappealoLogo} alt="Tappealo" className="w-16" />
 				</div>
 			</header>
 
 			<main className="px-6 py-8 max-w-4xl mx-auto">
 				<div className="flex items-center gap-3 mb-8">
-					<Store className="h-8 w-8 text-primary" />
+					<QrCode className="h-8 w-8 text-primary" />
 					<div>
 						<h1 className="text-2xl font-bold text-foreground">
-							Configuración
+							Configuración de QRs
 						</h1>
 						<p className="text-muted-foreground">
-							Gestiona tu comercio, servicio y códigos QR
+							Gestiona tu servicio y códigos QR
 						</p>
 					</div>
 				</div>
@@ -359,7 +358,7 @@ const QRSettings = () => {
 							id="service-toggle"
 							checked={serviceActive}
 							onCheckedChange={handleToggleService}
-							disabled={updating}
+							disabled={updating || venue?.plan === "demo"}
 						/>
 					</div>
 				</div>
@@ -386,7 +385,7 @@ const QRSettings = () => {
 
 							<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
 								<DialogTrigger asChild>
-									<Button size="sm">
+									<Button size="sm" disabled={qRDisabled()}>
 										<Plus className="h-4 w-4 mr-2" />
 										Agregar QR
 									</Button>
@@ -428,10 +427,10 @@ const QRSettings = () => {
 												</SelectContent>
 											</Select>
 										</div>
-
+								
 										<Button
 											onClick={handleAddQR}
-											disabled={!newQRName.trim() || addingQR}
+											disabled={!newQRName.trim() || addingQR }
 											className="w-full"
 										>
 											{addingQR ? (
@@ -439,6 +438,8 @@ const QRSettings = () => {
 											) : null}
 											Agregar
 										</Button>
+							
+										
 									</div>
 								</DialogContent>
 							</Dialog>

@@ -2,13 +2,16 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-export { adminCreateVenue } from "./adminCreateVenue";
-export { adminSetVenueEnabled } from './admin'
 import { getNextRefOrderId } from "./utils/utils";
 import type { OrderItem } from "./types/orderItem";
 import type { ResolvedVenue } from "./types/resolvedVenue";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { bumpMenuUpdatedAtByVenueId } from "./triggers/menuMeta";
+
+export { adminCreateVenue } from "./adminCreateVenue";
+export { adminUpdateVenue } from "./adminUpdateVenue";
+export { adminSetVenueEnabled } from './admin'
+
 
 admin.initializeApp();
 
@@ -147,6 +150,8 @@ app.get("/public/:slug/venue", async (req, res) => {
       social_link: data.social_link ?? null,
       address_1: data.address_1 ?? null,
       address_2: data.address_2 ?? null,
+      plan: data.plan ?? "demo",
+      enabled: Boolean(data.enabled ?? true),
     });
   } catch (e) {
     console.error(e);
@@ -321,6 +326,7 @@ app.get("/public/:slug/promotions", async (req, res) => {
    ======================= */
 app.post("/public/:slug/orders", async (req, res) => {
   const venue = req.venue!;
+
   try {
     const db = admin.firestore();
 
@@ -348,16 +354,47 @@ app.post("/public/:slug/orders", async (req, res) => {
     const paymentMethod = safeString(body.payment_method);
     let refOrderId = safeString(body.ref_order_id);
 
-    if (!paymentMethod) return res.status(400).json({ error: "payment_method es requerido" });
+    if (!paymentMethod) {
+      return res.status(400).json({ error: "payment_method es requerido" });
+    }
 
     // 🔒 Validar QR solo si NO es "sin ubicacion"
     if (qrLocationId !== "sin ubicacion") {
       const qrSnap = await db.collection("qr_locations").doc(qrLocationId).get();
-      if (!qrSnap.exists) return res.status(404).json({ error: "QR no encontrado" });
+
+      if (!qrSnap.exists) {
+        return res.status(404).json({ error: "QR no encontrado" });
+      }
 
       const qrData = qrSnap.data() as any;
       if (qrData.venue_id !== venue.id) {
         return res.status(403).json({ error: "QR no pertenece al venue" });
+      }
+    }
+
+    // ✅ Validar límite para plan demo
+    const venueSnap = await db.collection("venues").doc(venue.id).get();
+    if (!venueSnap.exists) {
+      return res.status(404).json({ error: "Venue no encontrado" });
+    }
+
+    const venueData = venueSnap.data() as any;
+    const venuePlan = String(venueData?.plan ?? "").trim().toLowerCase();
+
+    if (venuePlan === "demo") {
+      const activeStatuses = ["entrante", "preparacion", "retirar", "enviar"];
+
+      const activeOrdersSnap = await db
+        .collection("orders")
+        .where("venue_id", "==", venue.id)
+        .where("status", "in", activeStatuses)
+        .get();
+
+      if (activeOrdersSnap.size >= 5) {
+        return res.status(403).json({
+          error: "Límite de comandas alcanzado para el plan demo",
+          code: "DEMO_ORDER_LIMIT_REACHED",
+        });
       }
     }
 
@@ -385,9 +422,12 @@ app.post("/public/:slug/orders", async (req, res) => {
 
     const ref = await db.collection("orders").add(payload);
 
-    return res.status(201).json({ id: ref.id, ref_order_id: refOrderId });
+    return res.status(201).json({
+      id: ref.id,
+      ref_order_id: refOrderId,
+    });
   } catch (e) {
-    console.error(e);
+    console.error("POST /public/:slug/orders error:", e);
     return res.status(500).json({ error: "Error creando orden" });
   }
 });
@@ -738,41 +778,80 @@ app.get("/public/:slug/qr_locations/:id", async (req, res) => {
    ======================= */
 app.post("/public/:slug/calls", async (req, res) => {
   const venue = req.venue!;
+
   try {
     const db = admin.firestore();
 
     const qr_location_id = String(req.body?.qr_location_id ?? "").trim();
-    if (!qr_location_id) return res.status(400).json({ error: "Falta qr_location_id" });
+    if (!qr_location_id) {
+      return res.status(400).json({ error: "Falta qr_location_id" });
+    }
 
     // validar QR existe y pertenece al venue
     const qrRef = db.collection("qr_locations").doc(qr_location_id);
     const qrSnap = await qrRef.get();
-    if (!qrSnap.exists) return res.status(404).json({ error: "QR no encontrado" });
+
+    if (!qrSnap.exists) {
+      return res.status(404).json({ error: "QR no encontrado" });
+    }
 
     const qr = qrSnap.data() as any;
     if (String(qr.venue_id) !== String(venue.id)) {
       return res.status(403).json({ error: "QR no pertenece al venue" });
     }
 
+    // ✅ Validar límite para plan demo
+    const venueSnap = await db.collection("venues").doc(venue.id).get();
+    if (!venueSnap.exists) {
+      return res.status(404).json({ error: "Venue no encontrado" });
+    }
+
+    const venueData = venueSnap.data() as any;
+    const venuePlan = String(venueData?.plan ?? "").trim().toLowerCase();
+
+    if (venuePlan === "demo") {
+      // activas = no resueltas
+      const activeCallsSnap = await db
+        .collection("calls")
+        .where("venue_id", "==", venue.id)
+        .where("resolved", "==", false)
+        .get();
+
+      if (activeCallsSnap.size >= 5) {
+        return res.status(403).json({
+          error: "Límite de llamadas alcanzado para el plan demo",
+          code: "DEMO_CALL_LIMIT_REACHED",
+        });
+      }
+    }
+
     // crear call
     const callRef = db.collection("calls").doc();
+
     await callRef.set({
       venue_id: venue.id,
       qr_location_id,
-      qr_location_name: qr.name ?? null, // si tu qr_locations tiene "name"
+      qr_location_name: qr.name ?? null,
+
       seen: false,
       resolved: false,
+
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       seen_at: null,
       resolved_at: null,
     });
 
-    return res.status(201).json({ ok: true, call_id: callRef.id });
+    return res.status(201).json({
+      ok: true,
+      call_id: callRef.id,
+    });
   } catch (e) {
     console.error("create call error:", e);
     return res.status(500).json({ error: "Error creando llamada" });
   }
 });
+
+
 /* =======================
    Export Cloud Function
    ======================= */

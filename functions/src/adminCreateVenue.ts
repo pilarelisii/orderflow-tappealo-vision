@@ -3,11 +3,14 @@ import * as admin from "firebase-admin";
 
 if (!admin.apps.length) admin.initializeApp();
 
+type VenuePlan = "basico" | "pro" | "premium" | "trial" | "demo";
+
 type Payload = {
   email: string;
   password: string;
   slug: string;
   name: string;
+  plan: VenuePlan;
 
   phone?: string | null;
   location_link?: string | null;
@@ -29,6 +32,19 @@ function cleanNullable(v?: string | null) {
   return s ? s : null;
 }
 
+function normalizePlan(v: unknown): VenuePlan {
+  const plan = String(v ?? "").trim().toLowerCase();
+
+  if (plan === "basico" || plan === "pro" || plan === "premium" || plan === "trial" || plan === "demo") {
+    return plan;
+  }
+
+  throw new HttpsError(
+    "invalid-argument",
+    "plan must be basico, pro or premium"
+  );
+}
+
 async function assertAdmin(uid: string) {
   const snap = await admin
     .firestore()
@@ -44,45 +60,58 @@ async function assertAdmin(uid: string) {
 }
 
 export const adminCreateVenue = onCall(async (request) => {
-  // ✅ auth viene en request.auth
   const uid = request.auth?.uid;
-  if (!uid) throw new HttpsError("unauthenticated", "Authentication required");
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
 
   await assertAdmin(uid);
 
-  // ✅ data viene en request.data
   const p = request.data as Payload;
 
   const email = String(p.email || "").trim().toLowerCase();
   const password = String(p.password || "");
   const slug = normSlug(String(p.slug || ""));
   const name = String(p.name || "").trim();
+  const plan = normalizePlan(p.plan);
 
   if (!email) throw new HttpsError("invalid-argument", "email required");
-  if (password.length < 6) throw new HttpsError("invalid-argument", "password min 6");
+  if (password.length < 6) {
+    throw new HttpsError("invalid-argument", "password min 6");
+  }
   if (!slug) throw new HttpsError("invalid-argument", "slug required");
   if (!name) throw new HttpsError("invalid-argument", "name required");
 
   const db = admin.firestore();
 
-  // slug único
-  const exists = await db.collection("venues").where("slug", "==", slug).limit(1).get();
-  if (!exists.empty) throw new HttpsError("already-exists", "slug already exists");
+  const exists = await db
+    .collection("venues")
+    .where("slug", "==", slug)
+    .limit(1)
+    .get();
 
-  // crear user auth
+  if (!exists.empty) {
+    throw new HttpsError("already-exists", "slug already exists");
+  }
+
   let authUser: admin.auth.UserRecord;
   try {
     authUser = await admin.auth().createUser({ email, password });
   } catch (e: any) {
-    throw new HttpsError("already-exists", e?.message || "Auth create failed");
+    throw new HttpsError(
+      "already-exists",
+      e?.message || "Auth create failed"
+    );
   }
 
-  // crear doc venue
   const venueRef = db.collection("venues").doc();
+
   await venueRef.set({
     auth_id: authUser.uid,
     slug,
     name,
+    email,
+    plan,
 
     phone: cleanNullable(p.phone),
     location_link: cleanNullable(p.location_link),
@@ -100,5 +129,11 @@ export const adminCreateVenue = onCall(async (request) => {
     updated_at: null,
   });
 
-  return { ok: true, venueId: venueRef.id, authId: authUser.uid, slug };
+  return {
+    ok: true,
+    venueId: venueRef.id,
+    authId: authUser.uid,
+    slug,
+    plan,
+  };
 });

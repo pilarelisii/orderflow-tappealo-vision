@@ -67,6 +67,7 @@ export function useAuth() {
           adress_2: data.adress_2 ?? null,
           social_link: data.socialLink ?? null,
           created_at: data.createdAt,
+          plan: data.plan, 
         });
       } catch (err) {
         console.error("Error fetching venue:", err);

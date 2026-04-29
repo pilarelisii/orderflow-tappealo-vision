@@ -49,6 +49,7 @@ export default function PromosManagement() {
     }
   };
 
+
   if (loading) {
     return (
       <div className="flex justify-center py-10">
@@ -61,7 +62,7 @@ export default function PromosManagement() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Promociones</h3>
-        <Button size="sm" onClick={openCreate}>
+        <Button size="sm" onClick={openCreate} disabled={promotions.length >= 1 && venue?.plan === "demo"}>
           <Plus className="h-4 w-4 mr-1" />
           Agregar
         </Button>

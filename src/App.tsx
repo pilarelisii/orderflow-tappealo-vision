@@ -15,6 +15,7 @@ import AdminRoute from "./components/AdminRoute";
 import LoginAdmin from "./pages/LoginAdmin";
 import AdminHome from "./pages/AdminHome";
 import AdminCreateVenue from "./pages/AdminCreateVenues";
+import CommerceHome from "./pages/CommerceHome";
 
 
 const queryClient = new QueryClient();
@@ -46,12 +47,16 @@ const App = () => (
 						}
 					/>
 					<Route path="/" element={<Index />} />
-					<Route path="/stock" element={<Stock />} />
-					<Route path="/qr-settings" element={<QRSettings />} />
+					<Route path="/panel" element={<CommerceHome />} />
+					<Route path="/panel/stock" element={<Stock />} />
+					<Route path="/panel/qr-settings" element={<QRSettings />} />
 					{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-					<Route path="/comercio-settings" element={<CommerceSettings />} />
-					<Route path="/printer-settings" element={<PrinterSettings />} />
-					<Route path="/promotions" element={<Promotions />} />
+					<Route
+						path="/panel/comercio-settings"
+						element={<CommerceSettings />}
+					/>
+					<Route path="/panel/printer-settings" element={<PrinterSettings />} />
+					<Route path="/panel/promotions" element={<Promotions />} />
 					<Route path="*" element={<NotFound />} />
 				</Routes>
 			</BrowserRouter>

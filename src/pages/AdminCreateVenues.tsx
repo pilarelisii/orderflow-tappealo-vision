@@ -10,6 +10,15 @@ import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { httpsCallable } from "firebase/functions";
 import { fbFunctions } from "@/integrations/firebase/client";
 import { toast } from "sonner";
+import { VenuePlan } from "@/types/venue";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+
 
 function normSlugClient(s: string) {
 	return s
@@ -30,6 +39,7 @@ export default function AdminCreateVenue() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
+	const [plan, setPlan] = useState<VenuePlan>("demo");
 
 	// optional
 	const [phone, setPhone] = useState("");
@@ -56,20 +66,27 @@ export default function AdminCreateVenue() {
 
 	const handleCreate = async () => {
 		const s = normSlugClient(slug);
+
 		if (!s) return toast.error("Slug es obligatorio");
 		if (!name.trim()) return toast.error("Nombre es obligatorio");
 		if (!email.trim()) return toast.error("Correo es obligatorio");
-		if (password.trim().length < 6)
+		if (password.trim().length < 6) {
 			return toast.error("Contraseña mínimo 6 caracteres");
+		}
+		if (!plan) return toast.error("Plan es obligatorio");
 
 		setSaving(true);
+
 		try {
 			const fn = httpsCallable(fbFunctions, "adminCreateVenue");
-			const res: any = await fn({
+
+			await fn({
 				slug: s,
 				name: name.trim(),
 				email: email.trim().toLowerCase(),
 				password: password.trim(),
+				plan,
+
 				phone: phone.trim() || null,
 				location_link: location_link.trim() || null,
 				address_1: address_1.trim() || null,
@@ -78,7 +95,6 @@ export default function AdminCreateVenue() {
 			});
 
 			toast.success("Comercio creado ✅");
-			// volver al listado
 			navigate("/admin", { replace: true });
 		} catch (e: any) {
 			console.error(e);
@@ -129,7 +145,7 @@ export default function AdminCreateVenue() {
 								className="max-w-xl"
 							/>
 							<p className="text-xs text-muted-foreground">
-								Se normaliza automáticamente (minusculas, sin espacios).
+								Se normaliza automáticamente (minúsculas, sin espacios).
 							</p>
 						</div>
 
@@ -174,6 +190,30 @@ export default function AdminCreateVenue() {
 								placeholder="La Bici"
 								className="max-w-xl"
 							/>
+						</div>
+
+						{/* Plan */}
+						<div className="space-y-2">
+							<Label className="flex items-center gap-2">
+								<Store className="h-4 w-4" />
+								Plan *
+							</Label>
+
+							<Select
+								value={plan}
+								onValueChange={(value) => setPlan(value as VenuePlan)}
+							>
+								<SelectTrigger className="max-w-xl">
+									<SelectValue placeholder="Seleccionar plan" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="demo">Demo</SelectItem>
+									<SelectItem value="trial">Trial</SelectItem>
+									<SelectItem value="basico">Básico</SelectItem>
+									<SelectItem value="pro">Pro</SelectItem>
+									<SelectItem value="premium">Premium</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
 
 						{/* Phone */}

@@ -25,6 +25,7 @@ const Promotions = () => {
     );
   }
 
+
   if (!isAuthenticated) return null;
 
   return (
@@ -32,12 +33,12 @@ const Promotions = () => {
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link to="/">
+            <Link to="/panel">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
 
-          <img src={tappealoLogo} alt="Tappealo" className="h-10" />
+          <img src={tappealoLogo} alt="Tappealo" className="w-16" />
 
           {venue && (
             <div className="border-l border-border pl-4">

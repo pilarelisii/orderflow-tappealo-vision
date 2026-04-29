@@ -73,7 +73,8 @@ const ComercioSettings = () => {
 
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  	const fileInputRef = useRef<HTMLInputElement | null>(null);
+
 	// ✅ campos
 	const [venueName, setVenueName] = useState("");
 	const [venuePhone, setVenuePhone] = useState("");
@@ -111,9 +112,10 @@ const ComercioSettings = () => {
 	}, [getByType]);
 
 	useEffect(() => {
+		
 		const fetchVenueData = async () => {
 			if (!venue?.id) return;
-
+			console.log(venue);
 			setLoading(true);
 			try {
 				const snap = await getDoc(doc(db, "venues", venue.id));
@@ -182,38 +184,24 @@ const ComercioSettings = () => {
 				: null;
 
 			// 2) Subir logo primero (si hay archivo)
-			// 2) Subir logo primero (si hay archivo)
 			if (logoFile) {
 				try {
 					const ext = (logoFile.name.split(".").pop() || "jpg").toLowerCase();
 					const path = `venues/${venue.id}/logo/logo.${ext}`;
 					const fileRef = ref(storage, path);
 
-					console.log("SUBIENDO LOGO...");
-					console.log("venue.id:", venue.id);
-					console.log("path:", path);
-					console.log("logoFile:", {
-						name: logoFile.name,
-						type: logoFile.type,
-						size: logoFile.size,
-					});
-
 					await uploadBytes(fileRef, logoFile, {
 						contentType: logoFile.type || "image/jpeg",
 						cacheControl: "public,max-age=31536000",
 					});
 
-					console.log("UPLOAD OK");
+
 
 					nextLogoUrl = await getDownloadURL(fileRef);
 					nextLogoPath = path;
 
-					console.log("DOWNLOAD URL:", nextLogoUrl);
 				} catch (err: any) {
 					console.error("ERROR SUBIENDO LOGO:", err);
-					console.error("error.code:", err?.code);
-					console.error("error.message:", err?.message);
-					toast.error(`Error subiendo logo: ${err?.message || "desconocido"}`);
 					throw err;
 				}
 			}
@@ -258,6 +246,24 @@ const ComercioSettings = () => {
 		}
 	};
 
+	const renderPlan = () => {
+		const text = "Posees el plan: ";
+		switch (venue?.plan) {
+			case "premium":
+				return text +"Premium";
+			case "pro":
+				return text + "Pro";
+			case "basico":
+				return text + "Basico";
+			case "demo": 
+				return "Actualmente estas utilizando una Demo";
+			case "trial":
+				return "Utilizando prueba gratuita";
+			default: 
+				return "Actualmente no estas utilizando ningun plan";
+		}
+	}
+
 	if (authLoading || loading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
@@ -265,7 +271,6 @@ const ComercioSettings = () => {
 			</div>
 		);
 	}
-
 	if (!isAuthenticated) return null;
 
 	return (
@@ -273,11 +278,11 @@ const ComercioSettings = () => {
 			<header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
 				<div className="flex items-center gap-4">
 					<Button variant="ghost" size="icon" asChild>
-						<Link to="/">
+						<Link to="/panel">
 							<ArrowLeft className="h-5 w-5" />
 						</Link>
 					</Button>
-					<img src={tappealoLogo} alt="Tappealo" className="h-10" />
+					<img src={tappealoLogo} alt="Tappealo" className="w-16" />
 				</div>
 			</header>
 
@@ -291,7 +296,22 @@ const ComercioSettings = () => {
 						</p>
 					</div>
 				</div>
-
+				<div className="bg-card border border-border rounded-lg p-6 mt-6 mb-6">
+					<div className="flex items-center justify-between py-3 border-b border-border">
+						<div>
+							<p className="font-medium text-foreground">
+								{renderPlan()}
+							</p>
+						</div>
+						<Button
+							type="button"
+							variant="outline"
+							disabled={true}
+						>
+							Cambiar plan
+						</Button>
+					</div>
+				</div>
 				<div className="bg-card border border-border rounded-lg p-6 mb-8">
 					<div className="space-y-4">
 						{/* Logo */}
@@ -457,7 +477,7 @@ const ComercioSettings = () => {
 					{/* EF */}
 					<div className="flex items-center justify-between py-3 border-b border-border">
 						<div>
-							<p className="font-medium text-foreground">Efectivo</p>
+							<p className="font-medium text-foreground">Efectivo / Transferencia</p>
 							<p className="text-xs text-muted-foreground">
 								El cliente paga al retirar / recibir
 							</p>
@@ -477,6 +497,7 @@ const ComercioSettings = () => {
 						<Switch
 							checked={isEnabled("MP")}
 							onCheckedChange={(v) => toggle("MP", v)}
+							disabled={venue?.plan === "demo"}
 						/>
 					</div>
 

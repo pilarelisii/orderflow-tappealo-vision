@@ -51,6 +51,7 @@ export function useOrders() {
   // ✅ qrMap sin romper deps
   const qrMap = useQrLocationsMap(venue?.id);
   const qrMapRef = useRef<Record<string, string>>({});
+
   useEffect(() => {
     qrMapRef.current = qrMap || {};
   }, [qrMap]);
@@ -58,9 +59,11 @@ export function useOrders() {
   // ✅ refs estables
   const toastRef = useRef(toast);
   const playNotificationSoundRef = useRef(playNotificationSound);
+
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
+
   useEffect(() => {
     playNotificationSoundRef.current = playNotificationSound;
   }, [playNotificationSound]);
@@ -74,9 +77,7 @@ export function useOrders() {
       initialized.current = false;
       return;
     }
-
-    setLoading(true);
-
+    
     // ✅ NO orderBy: evita depender de índices y evita problemas de timestamp/campos
     const q = query(
       collection(db, "orders"),
@@ -114,6 +115,9 @@ export function useOrders() {
         }
 
         setOrders(list);
+     
+
+
         setLoading(false);
         initialized.current = true;
       },
@@ -127,7 +131,7 @@ export function useOrders() {
         });
       }
     );
-
+  
     return () => unsubscribe();
   }, [venue?.id]);
 
