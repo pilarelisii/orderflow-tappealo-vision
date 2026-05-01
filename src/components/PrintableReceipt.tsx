@@ -4,9 +4,10 @@ import { es } from "date-fns/locale";
 
 interface PrintableReceiptProps {
   order: Order;
-}
+  ref_id: string;
+} 
 
-export function PrintableReceipt({ order }: PrintableReceiptProps) {
+export function PrintableReceipt({ order, ref_id }: PrintableReceiptProps) {
   const formattedDate = format(new Date(order.created_at), "dd/MM/yyyy HH:mm", { locale: es });
 
   return (
@@ -106,7 +107,7 @@ export function PrintableReceipt({ order }: PrintableReceiptProps) {
       
       <div className="header">
         <h1>LA BICI</h1>
-        <p>Pedido #{order.ref_order_id}</p>
+        <p>Pedido #{ref_id}</p>
         <p>{formattedDate}</p>
       </div>
 

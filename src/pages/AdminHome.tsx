@@ -38,6 +38,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import FullScreenLoader from "@/components/FullScreenLoader";
 
 function normSlugClient(s: string) {
 	return s
@@ -153,9 +154,7 @@ export default function AdminHome() {
 
 	if (adminLoading || loading) {
 		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
-				<Loader2 className="w-8 h-8 animate-spin text-primary" />
-			</div>
+			<FullScreenLoader />
 		);
 	}
 

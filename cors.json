@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "http://localhost:8080",
+      "http://localhost:5173",
+      "https://tappealo.com",
+      "https://www.tappealo.com"
+    ],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"]
+  }
+]

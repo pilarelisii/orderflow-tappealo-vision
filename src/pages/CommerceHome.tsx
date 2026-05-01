@@ -27,6 +27,8 @@ import {
 	SheetTrigger,
 } from "@/components/ui/sheet";
 import Notifications from "@/components/Notifications";
+import FullScreenLoader from "@/components/FullScreenLoader";
+
 
 const columns: { title: string; status: OrderStatus }[] = [
 	{ title: "Pedido Entrante", status: "entrante" },
@@ -44,11 +46,7 @@ const statusFlow: OrderStatus[] = [
 	"terminadas",
 ];
 
-const FullScreenLoader = () => (
-	<div className="flex min-h-screen items-center justify-center bg-background">
-		<Loader2 className="w-8 h-8 animate-spin text-primary" />
-	</div>
-);
+
 
 const CommerceHome = () => {
 	const navigate = useNavigate();
@@ -72,7 +70,7 @@ const CommerceHome = () => {
 	const handleLogout = async () => {
 		const { error } = await signOut();
 		if (error) {
-			toast.error("Error al cerrar sesión");
+			toast.error("Error al cerrar sesión")
 		} else {
 			navigate("/login");
 		}
@@ -117,6 +115,7 @@ const CommerceHome = () => {
 				</div>
 
 				<div className="flex items-center gap-2">
+					{venue?.enabled === true &&
 					<Sheet>
 						<SheetTrigger asChild>
 							<Button variant="ghost" size="icon">
@@ -182,7 +181,7 @@ const CommerceHome = () => {
 							</nav>
 						</SheetContent>
 					</Sheet>
-
+					}
 					<Button variant="ghost" size="icon" onClick={handleLogout}>
 						<LogOut className="h-5 w-5" />
 					</Button>
@@ -198,14 +197,31 @@ const CommerceHome = () => {
 					</p>
 				</div>
 			)}
-
+			{venue?.enabled === false && (
+				<div className="px-6 py-4 bg-background flex flex-row items-center justify-between">
+					<h1 className="text-2xl font-bold text-foreground">
+						Tu comercio se encuentra deshabilitado
+					</h1>
+					<a
+						href={`https://wa.me/542212021296/?text=Hola!%20soy%20${
+							venue?.name || "un%20comercio"
+						}%20y%20me%20gustaria%20habilitar%20mi%20comercio.`}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="rounded-2xl border border-[#5a351f] bg-[#fff7ec] px-5 py-3 text-sm font-bold text-[#5a351f] transition hover:scale-[1.03] block"
+					>
+						Contactar administrador
+					</a>
+				</div>
+			)}
 			{/* Subheader */}
-			<div className="px-6 py-4 bg-background">
+			<div className={`px-6 py-4 bg-background ${venue?.enabled === false ? "hidden" : ""}`}>
 				<h1 className="text-2xl font-bold text-foreground">Comandas</h1>
 				<p className="text-muted-foreground">Panel de Gestión de Pedidos</p>
 			</div>
 
 			{/* Columns */}
+			{venue?.enabled === true &&
 			<main className="px-6 pb-6">
 				<div className="flex gap-4 overflow-x-auto pb-4">
 					{columns.map(({ title, status }, index) => (
@@ -222,7 +238,7 @@ const CommerceHome = () => {
 						/>
 					))}
 				</div>
-				<div className="w-full flex flex-row justify-between gap-14">
+				<div className="w-full flex md:flex-row flex-col justify-between gap-14">
 					<Notifications />
 					<OrderHistory
 						availableDates={getAvailableDates()}
@@ -230,6 +246,7 @@ const CommerceHome = () => {
 					/>
 				</div>
 			</main>
+			}
 		</div>
 	);
 };

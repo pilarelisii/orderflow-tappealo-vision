@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import PromosManagement from "@/components/PromosManagement";
+import FullScreenLoader from "@/components/FullScreenLoader";
 
 const Promotions = () => {
   const navigate = useNavigate();
@@ -19,9 +20,7 @@ const Promotions = () => {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <FullScreenLoader />
     );
   }
 

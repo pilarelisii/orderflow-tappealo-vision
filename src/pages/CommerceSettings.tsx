@@ -25,8 +25,9 @@ import tappealoLogo from "@/assets/tappealo-logo.png";
 import { db, storage } from "@/integrations/firebase/client";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import FullScreenLoader from "@/components/FullScreenLoader";
 
-const isImage = (f: File) => f.type?.startsWith("image/");
+const isImage = (f: File) => f.type?.startsWith("image/")
 const max5mb = (f: File) => f.size <= 5 * 1024 * 1024;
 
 const isMapsShortLink = (url: string) => /maps\.app\.goo\.gl/i.test(url.trim());
@@ -48,6 +49,15 @@ async function resolveGoogleMapsUrl(input: string): Promise<string> {
 	const finalUrl = res.url || url;
 
 	return finalUrl;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result));
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
 }
 
 // (opcional) preparar embed (solo para google.com/maps…)
@@ -111,8 +121,8 @@ const ComercioSettings = () => {
 		setMpAccessToken(String(d.mp_access_token || ""));
 	}, [getByType]);
 
+
 	useEffect(() => {
-		
 		const fetchVenueData = async () => {
 			if (!venue?.id) return;
 			console.log(venue);
@@ -169,7 +179,7 @@ const ComercioSettings = () => {
 		try {
 			let nextLogoUrl: string | null = logoUrl?.trim() || null;
 			let nextLogoPath: string | null = null;
-
+			let nextLogoDataUrl: string | null = null;
 			// 1) Normalizar Maps
 			let normalizedMapsUrl: string | null = googleMapsUrl.trim() || null;
 			if (normalizedMapsUrl) {
@@ -186,6 +196,7 @@ const ComercioSettings = () => {
 			// 2) Subir logo primero (si hay archivo)
 			if (logoFile) {
 				try {
+					nextLogoDataUrl = await fileToDataUrl(logoFile);
 					const ext = (logoFile.name.split(".").pop() || "jpg").toLowerCase();
 					const path = `venues/${venue.id}/logo/logo.${ext}`;
 					const fileRef = ref(storage, path);
@@ -219,6 +230,7 @@ const ComercioSettings = () => {
 
 				logo_url: nextLogoUrl,
 				...(nextLogoPath ? { logo_path: nextLogoPath } : {}),
+				logo_data_url: nextLogoDataUrl,
 
 				updated_at: serverTimestamp(),
 			});
@@ -247,10 +259,10 @@ const ComercioSettings = () => {
 	};
 
 	const renderPlan = () => {
-		const text = "Posees el plan: ";
+		const text = `Posees el plan `;
 		switch (venue?.plan) {
 			case "premium":
-				return text +"Premium";
+				return text +`Premium`;
 			case "pro":
 				return text + "Pro";
 			case "basico":
@@ -266,9 +278,7 @@ const ComercioSettings = () => {
 
 	if (authLoading || loading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background">
-				<Loader2 className="w-8 h-8 animate-spin text-primary" />
-			</div>
+			<FullScreenLoader/>
 		);
 	}
 	if (!isAuthenticated) return null;
@@ -299,17 +309,16 @@ const ComercioSettings = () => {
 				<div className="bg-card border border-border rounded-lg p-6 mt-6 mb-6">
 					<div className="flex items-center justify-between py-3 border-b border-border">
 						<div>
-							<p className="font-medium text-foreground">
-								{renderPlan()}
-							</p>
+							<p className="font-semibold text-foreground">{renderPlan()}</p>
 						</div>
-						<Button
-							type="button"
-							variant="outline"
-							disabled={true}
+						<a
+							href={`https://wa.me/542212021296/?text=Hola!%20soy%20${venue?.name || "un%20comercio"}%20y%20me%20gustaria%20cambiar%20de%20plan`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="rounded-2xl border border-[#5a351f] bg-[#fff7ec] px-5 py-3 text-sm font-bold text-[#5a351f] transition hover:scale-[1.03] block"
 						>
 							Cambiar plan
-						</Button>
+						</a>
 					</div>
 				</div>
 				<div className="bg-card border border-border rounded-lg p-6 mb-8">
@@ -477,7 +486,9 @@ const ComercioSettings = () => {
 					{/* EF */}
 					<div className="flex items-center justify-between py-3 border-b border-border">
 						<div>
-							<p className="font-medium text-foreground">Efectivo / Transferencia</p>
+							<p className="font-medium text-foreground">
+								Efectivo / Transferencia
+							</p>
 							<p className="text-xs text-muted-foreground">
 								El cliente paga al retirar / recibir
 							</p>

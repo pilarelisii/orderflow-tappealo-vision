@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
+import DemoSection from "@/components/DemoSection";
 
 const WHATSAPP_LINK =
-	"https://wa.me/542213519098/?text=Hola!%20quiero%20más%20información%20sobre%20Tappealo";
+	"https://wa.me/542212021296/?text=Hola!%20quiero%20más%20información%20sobre%20Tappealo";
 
 function Icon({ name, className = "" }) {
 	const icons = {
@@ -293,15 +294,24 @@ export default function Index() {
 								FAQ
 							</a>
 						</nav>
-
-						<a
-							href={WHATSAPP_LINK}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="hidden rounded-2xl bg-[#5a351f] px-5 py-3 text-sm font-bold text-[#fff7ec] shadow-[0_12px_30px_rgba(90,53,31,0.22)] transition hover:scale-[1.03] md:block"
-						>
-							Solicitar demo
-						</a>
+						<div className="flex flex-row gap-5">
+							<a
+								href={WHATSAPP_LINK}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="hidden rounded-2xl bg-[#5a351f] px-5 py-3 text-sm font-bold text-[#fff7ec] shadow-[0_12px_30px_rgba(90,53,31,0.22)] transition hover:scale-[1.03] md:block"
+							>
+								Solicitar demo
+							</a>
+							<a
+								href="https://tappealo.com/login"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="rounded-2xl border border-[#5a351f] bg-[#fff7ec] px-5 py-3 text-sm font-bold text-[#5a351f] shadow-[0_12px_30px_rgba(90,53,31,0.22)] transition hover:scale-[1.03] block"
+							>
+								Iniciar Sesión
+							</a>
+						</div>
 					</div>
 				</header>
 
@@ -525,7 +535,7 @@ export default function Index() {
 					</div>
 				</div>
 			</section>
-
+			<DemoSection />
 			<section
 				className="mx-auto grid max-w-7xl gap-12 px-5 py-24 md:grid-cols-2 md:px-8"
 				id="panel"

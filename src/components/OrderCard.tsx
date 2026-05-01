@@ -129,7 +129,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
           <div class="receipt">
             <div class="header">
               <h1>${venueName?.toUpperCase() || 'PEDIDO'}</h1>
-              <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
+              <p>Pedido #${order.ref_order_id}</p>
               <p>${new Date(order.created_at).toLocaleString('es-CL')}</p>
             </div>
             <div class="items">

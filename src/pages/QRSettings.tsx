@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import QRCodeLib from "qrcode";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { downloadAllQRCodesPDF } from "@/lib/downloadAllQRCodesPDF";
+import { downloadQRCodePosterPDF } from "@/lib/downloadQRCodePosterPDF";
 
 import {
 	Table,
@@ -54,17 +55,15 @@ import {
 import { db } from "@/integrations/firebase/client";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { downloadQRCodePDF } from "@/lib/downloadQRCodePDF";
+import FullScreenLoader from "@/components/FullScreenLoader";
+import { downloadAllQRCodePostersPDF } from "@/lib/downloadAllQRCodesPosterPDF";
+
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType; label: string }[] = [
 	{ value: "en_lugar", label: "En el lugar" },
 	{ value: "retiro", label: "Retiro" },
 	{ value: "envio", label: "Envío" },
 ];
 
-const FullScreenLoader = () => (
-	<div className="flex min-h-screen items-center justify-center bg-background">
-		<Loader2 className="w-8 h-8 animate-spin text-primary" />
-	</div>
-);
 
 const QRSettings = () => {
 	const navigate = useNavigate();
@@ -74,11 +73,6 @@ const QRSettings = () => {
 	const [loadingVenue, setLoadingVenue] = useState(true);
 	const [serviceActive, setServiceActive] = useState(true);
 	const [updating, setUpdating] = useState(false);
-
-	const [googleMapsUrl, setGoogleMapsUrl] = useState("");
-	const [venuePhone, setVenuePhone] = useState("");
-	const [savingCommerce, setSavingCommerce] = useState(false);
-
 	// ✅ QRs (hook snapshot)
 	const { qrs, loading: loadingQRs, createQR, updateQR, deleteQR } = useQrs();
 
@@ -98,7 +92,7 @@ const QRSettings = () => {
 
 	const [copiedId, setCopiedId] = useState<string | null>(null);
 
-
+	const [loadingQRCodes, setLoadingQRCodes] = useState(false);
 	/* =======================
      AUTH GUARD
      ======================= */
@@ -120,8 +114,6 @@ const QRSettings = () => {
 
 				const data = snap.data() as any;
 				setServiceActive(!!data.service_active);
-				setGoogleMapsUrl(data.google_maps_url || "");
-				setVenuePhone(data.phone || "");
 			} catch (e) {
 				console.error(e);
 				toast.error("Error al cargar datos del comercio");
@@ -238,7 +230,7 @@ const QRSettings = () => {
 	const buildQRUrl = (qrId: string) => {
 		const slug = (venue?.slug || "").trim().toLowerCase();
 		if (!slug) return "";
-		return `https://${slug}.${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
+		return `https://menu.${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
 	};
 
 	const copyToClipboard = async (qrId: string) => {
@@ -254,45 +246,52 @@ const QRSettings = () => {
 	};
 
 	const downloadQRCode = async (qrId: string, filename: string) => {
+		setLoadingQRCodes(true)
 		try {
 			const url = buildQRUrl(qrId);
 
-			await downloadQRCodePDF({
+			await downloadQRCodePosterPDF({
 				qrUrl: url,
 				qrName: filename || qrId,
-				restaurantLogoUrl: venue?.logo_url || null, // si lo tenés en venue
+				venueLogoUrl: venue?.logo_data_url || null,
 				filename,
 			});
 
 			toast.success("PDF descargado");
 		} catch (e) {
+			console.error(e);
 			toast.error("Error al generar el PDF");
+		} finally {
+			setLoadingQRCodes(false)
 		}
 	};
 
 	const downloadAllQRCodes = async () => {
+		setLoadingQRCodes(true);
 		try {
 			if (!qrs.length) {
 				toast.error("No hay QRs para descargar");
 				return;
 			}
+			toast.info("Generando PDF... esto puede tardar unos segundos");
 
 			const items = qrs.map((qr) => ({
-				id: qr.id,
-				name: qr.name || qr.id,
-				url: buildQRUrl(qr.id),
+				qrUrl: buildQRUrl(qr.id),
+				qrName: qr.name || qr.id,
 			}));
 
-			await downloadAllQRCodesPDF({
+			await downloadAllQRCodePostersPDF({
 				items,
-				restaurantLogoUrl: venue?.logo_url || null,
-				filename: `qr-${venue?.slug || "comercio"}`,
+				venueLogoUrl: venue?.logo_data_url || null,
+				filename: `qrs-${venue?.slug || "comercio"}`,
 			});
 
 			toast.success("PDF generado");
 		} catch (e) {
 			console.error(e);
 			toast.error("Error al generar el PDF");
+		} finally {
+			setLoadingQRCodes(false);
 		}
 	};
 
@@ -309,6 +308,14 @@ const QRSettings = () => {
 			}
 		}
 	}
+
+	function fixFirebaseUrl(url: string) {
+		if (!url.includes("alt=media")) {
+			return url.includes("?") ? `${url}&alt=media` : `${url}?alt=media`;
+		}
+		return url;
+	}
+
 	/* =======================
      RENDER
      ======================= */
@@ -377,10 +384,16 @@ const QRSettings = () => {
 								variant="outline"
 								size="sm"
 								onClick={downloadAllQRCodes}
-								disabled={!qrs.length}
+								disabled={!qrs.length || loadingQRCodes}
 							>
-								<Download className="h-4 w-4 mr-2" />
-								Descargar todos
+								{loadingQRCodes ? (
+									<>Cargando...</>
+								) : (
+									<>
+										<Download className="h-4 w-4 mr-2" />
+										Descargar todos
+									</>
+								)}
 							</Button>
 
 							<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -427,10 +440,10 @@ const QRSettings = () => {
 												</SelectContent>
 											</Select>
 										</div>
-								
+
 										<Button
 											onClick={handleAddQR}
-											disabled={!newQRName.trim() || addingQR }
+											disabled={!newQRName.trim() || addingQR}
 											className="w-full"
 										>
 											{addingQR ? (
@@ -438,8 +451,6 @@ const QRSettings = () => {
 											) : null}
 											Agregar
 										</Button>
-							
-										
 									</div>
 								</DialogContent>
 							</Dialog>
@@ -567,6 +578,55 @@ const QRSettings = () => {
 					)}
 				</div>
 			</main>
+			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Editar QR</DialogTitle>
+					</DialogHeader>
+
+					<div className="space-y-4 pt-4">
+						<div className="space-y-2">
+							<Label htmlFor="edit-qr-name">Nombre</Label>
+							<Input
+								id="edit-qr-name"
+								value={editQRName}
+								onChange={(e) => setEditQRName(e.target.value)}
+								placeholder="Ej: Mesa 1 / Barra / Retiro"
+							/>
+						</div>
+
+						{editingQR?.id ? (
+							<div className="rounded-md bg-muted p-3">
+								<a className="text-sm text-muted-foreground break-all underline" href={buildQRUrl(editingQR.id)}>
+									{buildQRUrl(editingQR.id)}
+								</a>
+							</div>
+						) : null}
+
+						<div className="flex justify-end gap-2 pt-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setEditDialogOpen(false)}
+								disabled={savingEdit}
+							>
+								Cancelar
+							</Button>
+
+							<Button
+								type="button"
+								onClick={handleEditQR}
+								disabled={!editQRName.trim() || savingEdit}
+							>
+								{savingEdit ? (
+									<Loader2 className="h-4 w-4 animate-spin mr-2" />
+								) : null}
+								Guardar cambios
+							</Button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 };

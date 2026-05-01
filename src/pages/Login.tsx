@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Loader2 } from "lucide-react";
+import FullScreenLoader from "@/components/FullScreenLoader";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -59,9 +60,7 @@ const Login = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <FullScreenLoader />
     );
   }
 

@@ -69,6 +69,8 @@ export function useOrders() {
   }, [playNotificationSound]);
 
   const initialized = useRef(false);
+  const seenOrderIdsRef = useRef<Set<string>>(new Set());
+  const firstSnapshotRef = useRef(true);
 
   useEffect(() => {
     if (!venue?.id) {
@@ -85,52 +87,60 @@ export function useOrders() {
     );
 
     const unsubscribe = onSnapshot(
-      q,
-      { includeMetadataChanges: true }, // ✅ ayuda en algunos casos de cache/reconexión
-      (snapshot) => {
-        // ✅ ordenamos en JS
-        const list = snapshot.docs
-          .map((d) => mapDocToOrder(d.id, d.data()))
-          .sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
+  q,
+  (snapshot) => {
+    const list = snapshot.docs
+      .map((d) => mapDocToOrder(d.id, d.data()))
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
-        // 🔔 notificaciones solo después del primer load
-        if (initialized.current) {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-              const o = mapDocToOrder(change.doc.id, change.doc.data());
+    // Primer snapshot real: cargamos órdenes existentes, pero NO notificamos.
+    if (firstSnapshotRef.current) {
+      seenOrderIdsRef.current = new Set(snapshot.docs.map((d) => d.id));
+      firstSnapshotRef.current = false;
 
-              playNotificationSoundRef.current();
+      setOrders(list);
+      setLoading(false);
+      return;
+    }
 
-              toastRef.current?.({
-                title: "🔔 Nuevo pedido",
-                description: `Pedido recibido: ${
-                  qrMapRef.current[o.qr_location_id] ?? o.qr_location_id
-                }`,
-              });
-            }
-          });
-        }
+    snapshot.docChanges().forEach((change) => {
+      if (change.type !== "added") return;
 
-        setOrders(list);
-     
+      const orderId = change.doc.id;
 
+      // Si ya lo vimos, no notificar.
+      if (seenOrderIdsRef.current.has(orderId)) return;
 
-        setLoading(false);
-        initialized.current = true;
-      },
-      (error) => {
-        console.error("🔥 onSnapshot error:", error);
-        setLoading(false);
-        toastRef.current?.({
-          title: "Error",
-          description: "No se pudieron cargar los pedidos en tiempo real",
-          variant: "destructive",
-        });
-      }
-    );
+      seenOrderIdsRef.current.add(orderId);
+
+      const o = mapDocToOrder(orderId, change.doc.data());
+
+      playNotificationSoundRef.current();
+
+      toastRef.current?.({
+        title: "🔔 Nuevo pedido",
+        description: `Pedido recibido: ${
+          qrMapRef.current[o.qr_location_id] ?? o.qr_location_id
+        }`,
+      });
+    });
+
+    setOrders(list);
+    setLoading(false);
+  },
+  (error) => {
+    console.error("🔥 onSnapshot error:", error);
+    setLoading(false);
+    toastRef.current?.({
+      title: "Error",
+      description: "No se pudieron cargar los pedidos en tiempo real",
+      variant: "destructive",
+    });
+  }
+);
   
     return () => unsubscribe();
   }, [venue?.id]);
