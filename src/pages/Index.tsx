@@ -265,10 +265,6 @@ export default function Index() {
 							aria-label="Ir al inicio"
 						>
 							<img src={tappealoLogo} alt="Tappealo" className="w-28" />
-
-							{/* <span className="text-xl font-black tracking-tight text-[#5a351f]">
-								tappealo
-							</span> */}
 						</a>
 
 						<nav
@@ -301,7 +297,7 @@ export default function Index() {
 								rel="noopener noreferrer"
 								className="hidden rounded-2xl bg-[#5a351f] px-5 py-3 text-sm font-bold text-[#fff7ec] shadow-[0_12px_30px_rgba(90,53,31,0.22)] transition hover:scale-[1.03] md:block"
 							>
-								Solicitar demo
+								Manual de uso
 							</a>
 							<a
 								href="https://tappealo.com/login"

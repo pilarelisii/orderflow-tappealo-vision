@@ -16,6 +16,7 @@ import LoginAdmin from "./pages/LoginAdmin";
 import AdminHome from "./pages/AdminHome";
 import AdminCreateVenue from "./pages/AdminCreateVenues";
 import CommerceHome from "./pages/CommerceHome";
+import Manual from "./pages/Manual";
 
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
 						}
 					/>
 					<Route path="/" element={<Index />} />
+					<Route path="/manual" element={<Manual />} />
 					<Route path="/panel" element={<CommerceHome />} />
 					<Route path="/panel/stock" element={<Stock />} />
 					<Route path="/panel/qr-settings" element={<QRSettings />} />
