@@ -348,7 +348,6 @@ app.post("/public/:slug/orders", async (req, res) => {
       }
     }
 
-    // ✅ qr_location_id NO obligatorio
     let qrLocationId = safeString(body.qr_location_id) || "sin ubicacion";
 
     const paymentMethod = safeString(body.payment_method);
@@ -358,7 +357,6 @@ app.post("/public/:slug/orders", async (req, res) => {
       return res.status(400).json({ error: "payment_method es requerido" });
     }
 
-    // 🔒 Validar QR solo si NO es "sin ubicacion"
     if (qrLocationId !== "sin ubicacion") {
       const qrSnap = await db.collection("qr_locations").doc(qrLocationId).get();
 
@@ -382,7 +380,7 @@ app.post("/public/:slug/orders", async (req, res) => {
     const venuePlan = String(venueData?.plan ?? "").trim().toLowerCase();
 
     if (venuePlan === "demo") {
-      const activeStatuses = ["entrante", "preparacion", "retirar", "enviar"];
+      const activeStatuses = ["entrante", "preparacion", "retirar", "falta-pagar"];
 
       const activeOrdersSnap = await db
         .collection("orders")
@@ -434,8 +432,8 @@ app.post("/public/:slug/orders", async (req, res) => {
 
 /* =======================
    PATCH /public/:slug/orders/:id/status
-   ======================= */
-const ORDER_STATUSES = ["entrante", "preparacion", "retirar", "enviar", "terminadas"] as const;
+======================= */
+const ORDER_STATUSES = ["entrante", "preparacion", "retirar", "falta-pagar", "terminadas"] as const;
 type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 app.get("/public/:slug/orders/:id/status", async (req, res) => {

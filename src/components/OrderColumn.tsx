@@ -17,7 +17,7 @@ const columnStyles: Record<OrderStatus, string> = {
   entrante: "border-t-column-entrante",
   preparacion: "border-t-column-preparacion",
   retirar: "border-t-column-retirar",
-  enviar: "border-t-column-enviar",
+  "falta-pagar": "border-t-column-enviar",
   terminadas: "border-t-column-terminadas",
 };
 
@@ -25,7 +25,7 @@ const badgeStyles: Record<OrderStatus, string> = {
   entrante: "bg-column-entrante",
   preparacion: "bg-column-preparacion",
   retirar: "bg-column-retirar",
-  enviar: "bg-column-enviar",
+  "falta-pagar": "bg-column-enviar",
   terminadas: "bg-column-terminadas",
 };
 

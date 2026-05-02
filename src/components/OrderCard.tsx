@@ -23,10 +23,11 @@ interface OrderCardProps {
 const statusConfig: Record<OrderStatus, { next: OrderStatus | null; label: string }> = {
   entrante: { next: 'preparacion', label: 'Preparar' },
   preparacion: { next: 'retirar', label: 'Listo' },
-  retirar: { next: 'enviar', label: 'Enviar' },
-  enviar: { next: 'terminadas', label: 'Terminar' },
+  retirar: { next: 'falta-pagar', label: 'Falta pagar' },
+  "falta-pagar": { next: 'terminadas', label: 'Terminar' },
   terminadas: { next: null, label: '' },
 };
+
 
 export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMovePrev, venueName }: OrderCardProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -287,7 +288,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 ) : (
                   <Banknote className="w-4 h-4 text-green-600" />
                 )}
-                <span className="font-medium text-foreground text-sm capitalize">{order.payment_method}</span>
+                <span className="font-medium text-foreground text-sm capitalize">{order.payment_method === "efectivo" ? "Efectivo" : "Mercado Pago"}</span>
               </div>
             )}
             

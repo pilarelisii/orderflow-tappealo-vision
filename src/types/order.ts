@@ -5,7 +5,7 @@ export interface OrderItem {
   product_id: string | null;
 }
 
-export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'enviar' | 'terminadas';
+export type OrderStatus = 'entrante' | 'preparacion' | 'retirar' | 'falta-pagar' | 'terminadas';
 
 export interface Order {
   id: string;

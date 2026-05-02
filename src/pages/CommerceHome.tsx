@@ -34,8 +34,8 @@ import FullScreenLoader from "@/components/FullScreenLoader";
 const columns: { title: string; status: OrderStatus }[] = [
 	{ title: "Pedido Entrante", status: "entrante" },
 	{ title: "En Preparación", status: "preparacion" },
-	{ title: "Para Retirar", status: "retirar" },
-	{ title: "Para Enviar", status: "enviar" },
+	{ title: "Retirar/Enviar", status: "retirar" },
+	{ title: "Falta pagar", status: "falta-pagar" },
 	{ title: "Terminadas", status: "terminadas" },
 ];
 
@@ -43,7 +43,7 @@ const statusFlow: OrderStatus[] = [
 	"entrante",
 	"preparacion",
 	"retirar",
-	"enviar",
+	"falta-pagar",
 	"terminadas",
 ];
 
@@ -78,16 +78,26 @@ const CommerceHome = () => {
 	};
 
 	const handleMoveNext = (order: Order) => {
-		const currentIndex = statusFlow.indexOf(order.status);
+		let currentIndex = statusFlow.indexOf(order.status);
 		if (currentIndex < statusFlow.length - 1) {
-			updateOrderStatus(order, statusFlow[currentIndex + 1]);
+			if (order.status === "retirar" && order.payment_method === "mercado_pago") {
+				currentIndex = currentIndex + 2;
+			} else {
+				currentIndex++ 
+			}
+			updateOrderStatus(order, statusFlow[currentIndex]);
 		}
 	};
 
 	const handleMovePrev = (order: Order) => {
-		const currentIndex = statusFlow.indexOf(order.status);
+		let currentIndex = statusFlow.indexOf(order.status);
+		if(order.status === "terminadas" && order.payment_method === "mercado_pago") {
+			currentIndex = currentIndex - 2
+		} else {
+			currentIndex--
+		}
 		if (currentIndex > 0) {
-			updateOrderStatus(order, statusFlow[currentIndex - 1]);
+			updateOrderStatus(order, statusFlow[currentIndex]);
 		}
 	};
 
@@ -180,7 +190,7 @@ const CommerceHome = () => {
 										</div>
 										<ChevronRight className="h-4 w-4 text-muted-foreground" />
 									</Link>
-									{/* <Link
+									<Link
                   to="/printer-settings"
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                 >
@@ -189,7 +199,7 @@ const CommerceHome = () => {
                     <span className="font-medium">Impresora</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link> */}
+                </Link>
 								</nav>
 							</SheetContent>
 						</Sheet>
