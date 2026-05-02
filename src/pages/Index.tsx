@@ -292,7 +292,7 @@ export default function Index() {
 						</nav>
 						<div className="flex flex-row gap-5">
 							<a
-								href={WHATSAPP_LINK}
+								href="https://tappealo.com/manual"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="hidden rounded-2xl bg-[#5a351f] px-5 py-3 text-sm font-bold text-[#fff7ec] shadow-[0_12px_30px_rgba(90,53,31,0.22)] transition hover:scale-[1.03] md:block"
