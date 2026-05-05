@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sheet";
 import Notifications from "@/components/Notifications";
 import FullScreenLoader from "@/components/FullScreenLoader";
+import Componente from "@/components/Componente";
 
 
 const columns: { title: string; status: OrderStatus }[] = [
@@ -190,7 +191,7 @@ const CommerceHome = () => {
 										</div>
 										<ChevronRight className="h-4 w-4 text-muted-foreground" />
 									</Link>
-									<Link
+									{/* <Link
                   to="/printer-settings"
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                 >
@@ -199,7 +200,7 @@ const CommerceHome = () => {
                     <span className="font-medium">Impresora</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
+                </Link> */}
 								</nav>
 							</SheetContent>
 						</Sheet>
@@ -209,6 +210,7 @@ const CommerceHome = () => {
 					</Button>
 				</div>
 			</header>
+		
 			{venue?.plan === "demo" && (
 				<div className="px-6 py-4 bg-background">
 					<h1 className="text-xl font-bold text-foreground opacity-80">

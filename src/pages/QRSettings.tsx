@@ -225,12 +225,12 @@ const QRSettings = () => {
 		}
 	};
 
-	const MENU_DOMAIN = "tappealo.com"; // cambiá por tu dominio real
+	const MENU_DOMAIN = "menu.tappealo.com"; // cambiá por tu dominio real
 
 	const buildQRUrl = (qrId: string) => {
 		const slug = (venue?.slug || "").trim().toLowerCase();
 		if (!slug) return "";
-		return `https://menu.${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
+		return `https://${MENU_DOMAIN}/menu/${slug}/?utm_source=qr&utm_campaign=${qrId}`;
 	};
 
 	const copyToClipboard = async (qrId: string) => {
@@ -253,7 +253,7 @@ const QRSettings = () => {
 			await downloadQRCodePosterPDF({
 				qrUrl: url,
 				qrName: filename || qrId,
-				venueLogoUrl: venue?.logo_data_url || null,
+				venueLogoUrl: venue?.logo_data_url || venue?.logo_url || null,
 				filename,
 			});
 

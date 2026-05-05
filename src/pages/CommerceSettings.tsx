@@ -52,12 +52,18 @@ async function resolveGoogleMapsUrl(input: string): Promise<string> {
 }
 
 function fileToDataUrl(file: File): Promise<string> {
-	return new Promise((resolve, reject) => {
+	try {
+		return new Promise((resolve, reject) => {
 		const reader = new FileReader();
 		reader.onload = () => resolve(String(reader.result));
 		reader.onerror = reject;
 		reader.readAsDataURL(file);
-	});
+		});
+	} catch (e) {
+		console.error(e);
+		return Promise.reject(e);
+	}
+	
 }
 
 // (opcional) preparar embed (solo para google.com/maps…)
@@ -125,7 +131,7 @@ const ComercioSettings = () => {
 	useEffect(() => {
 		const fetchVenueData = async () => {
 			if (!venue?.id) return;
-			console.log(venue);
+			
 			setLoading(true);
 			try {
 				const snap = await getDoc(doc(db, "venues", venue.id));
@@ -186,7 +192,7 @@ const ComercioSettings = () => {
 				try {
 					normalizedMapsUrl = await resolveGoogleMapsUrl(normalizedMapsUrl);
 				} catch {
-					toast.warning("No pude normalizar el link. Se guardará como está.");
+				//	toast.warning("No pude normalizar el link. Se guardará como está.");
 				}
 			}
 			const location_embed = normalizedMapsUrl

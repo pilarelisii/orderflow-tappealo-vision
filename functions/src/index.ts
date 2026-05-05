@@ -351,7 +351,6 @@ app.post("/public/:slug/orders", async (req, res) => {
     let qrLocationId = safeString(body.qr_location_id) || "sin ubicacion";
 
     const paymentMethod = safeString(body.payment_method);
-    let refOrderId = safeString(body.ref_order_id);
 
     if (!paymentMethod) {
       return res.status(400).json({ error: "payment_method es requerido" });
@@ -369,6 +368,8 @@ app.post("/public/:slug/orders", async (req, res) => {
         return res.status(403).json({ error: "QR no pertenece al venue" });
       }
     }
+
+    const refOrderId = await getNextRefOrderId(db, venue.id);
 
     // ✅ Validar límite para plan demo
     const venueSnap = await db.collection("venues").doc(venue.id).get();
@@ -394,10 +395,6 @@ app.post("/public/:slug/orders", async (req, res) => {
           code: "DEMO_ORDER_LIMIT_REACHED",
         });
       }
-    }
-
-    if (!refOrderId) {
-      refOrderId = await getNextRefOrderId(db, venue.id);
     }
 
     const payload: any = {
@@ -560,14 +557,16 @@ app.post("/public/:slug/mp/preference", async (req, res) => {
     const total = Number(body.total ?? 0);
 
     const qr_location_id = String(body.qr_location_id ?? "").trim();
-    const ref_order_id = String(body.ref_order_id ?? "").trim();
+    //const ref_order_id = String(body.ref_order_id ?? "").trim();
 
     const success_url = String(body.success_url ?? "").trim();
     const failure_url = String(body.failure_url ?? "").trim();
     const pending_url = String(body.pending_url ?? "").trim();
+    const refOrderId = await getNextRefOrderId(db, venue.id);
+
 
     if (!qr_location_id) return res.status(400).json({ error: "Falta qr_location_id" });
-    if (!ref_order_id) return res.status(400).json({ error: "Falta ref_order_id" });
+    //if (!ref_order_id) return res.status(400).json({ error: "Falta ref_order_id" });
     if (!items.length) return res.status(400).json({ error: "Faltan items" });
 
     // obligatorias si usás auto_return
@@ -604,13 +603,13 @@ app.post("/public/:slug/mp/preference", async (req, res) => {
       notification_url: notificationUrl,
 
       // referencia tuya (la usás para debug / conciliación)
-      external_reference: ref_order_id,
+      external_reference: refOrderId,
 
       // metadata completa para crear la orden al confirmar
       metadata: {
         venue_id: venue.id,
         venue_slug: venue.slug,
-        ref_order_id,
+        refOrderId,
         qr_location_id,
         notes,
         phone_number,
@@ -639,6 +638,7 @@ app.post("/public/:slug/mp/preference", async (req, res) => {
       preferenceId: json.id,
       init_point: json.init_point,
       sandbox_init_point: json.sandbox_init_point,
+      ref_order_id: refOrderId
     });
   } catch (e) {
     console.error("❌ MP preference error:", e);
@@ -729,6 +729,50 @@ app.post("/mp/webhook/:venueId", async (req, res) => {
   } catch (e) {
     console.error("WEBHOOK ERROR:", e);
     return res.status(200).send("ok");
+  }
+});
+
+/* =======================
+   GET /public/:slug/orders/by-ref/:refOrderId
+   ======================= */
+app.get("/public/:slug/orders/by-ref/:refOrderId", async (req, res) => {
+  const venue = req.venue!;
+
+  try {
+    const db = admin.firestore();
+
+    const refOrderId = String(req.params.refOrderId || "").trim();
+
+    if (!refOrderId) {
+      return res.status(400).json({ error: "Falta refOrderId" });
+    }
+
+    const snap = await db
+      .collection("orders")
+      .where("venue_id", "==", venue.id)
+      .where("ref_order_id", "==", refOrderId)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return res.status(404).json({
+        found: false,
+      });
+    }
+
+    const orderDoc = snap.docs[0];
+    const data = orderDoc.data() as any;
+
+    return res.json({
+      found: true,
+      id: orderDoc.id,
+      ref_order_id: data.ref_order_id,
+      qr_location_id: data.qr_location_id,
+      status: data.status,
+    });
+  } catch (e) {
+    console.error("GET order by ref error:", e);
+    return res.status(500).json({ error: "Error buscando orden" });
   }
 });
 
