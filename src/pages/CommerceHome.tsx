@@ -15,7 +15,8 @@ import {
 	Store,
 	Printer,
 	Tag,
-	Book
+	Book,
+	PenLine
 } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ import {
 } from "@/components/ui/sheet";
 import Notifications from "@/components/Notifications";
 import FullScreenLoader from "@/components/FullScreenLoader";
-import Componente from "@/components/Componente";
 
 
 const columns: { title: string; status: OrderStatus }[] = [
@@ -188,6 +188,17 @@ const CommerceHome = () => {
 										<div className="flex items-center gap-3">
 											<Book className="h-5 w-5 text-muted-foreground" />
 											<span className="font-medium">Manual de uso</span>
+										</div>
+										<ChevronRight className="h-4 w-4 text-muted-foreground" />
+									</Link>
+									<Link
+										to="/panel/personalizacion"
+										target="_blank"
+										className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+									>
+										<div className="flex items-center gap-3">
+											<PenLine className="h-5 w-5 text-muted-foreground" />
+											<span className="font-medium">Personalización de menu</span>
 										</div>
 										<ChevronRight className="h-4 w-4 text-muted-foreground" />
 									</Link>

@@ -152,6 +152,10 @@ app.get("/public/:slug/venue", async (req, res) => {
       address_2: data.address_2 ?? null,
       plan: data.plan ?? "demo",
       enabled: Boolean(data.enabled ?? true),
+      color_background: data.color_background ?? null,
+      color_text: data.color_text ?? null,
+      color_primary: data.color_primary ?? null,
+      color_foreground: data.color_foreground ?? null,
     });
   } catch (e) {
     console.error(e);

@@ -68,7 +68,11 @@ export function useAuth() {
           social_link: data.socialLink ?? null,
           created_at: data.createdAt,
           plan: data.plan, 
-          logo_data_url: data.logo_data_url ?? null
+          logo_data_url: data.logo_data_url ?? null,
+          color_background: data.color_background ?? null,
+          color_text: data.color_text ?? null,
+          color_primary: data.color_primary ?? null,
+          color_foreground: data.color_foreground ?? null
         });
       } catch (err) {
         console.error("Error fetching venue:", err);

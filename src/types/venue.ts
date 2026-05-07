@@ -17,4 +17,8 @@ export interface Venue {
   social_link: string | null;
   created_at: string;
   logo_data_url: string | null;
+  color_background: string | null;
+  color_text: string | null;
+  color_primary: string | null;
+  color_foreground: string | null;
 }

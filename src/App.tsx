@@ -17,6 +17,7 @@ import AdminHome from "./pages/AdminHome";
 import AdminCreateVenue from "./pages/AdminCreateVenues";
 import CommerceHome from "./pages/CommerceHome";
 import Manual from "./pages/Manual";
+import MenuEdit from "./pages/MenuEdit";
 
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
 					<Route path="/panel" element={<CommerceHome />} />
 					<Route path="/panel/stock" element={<Stock />} />
 					<Route path="/panel/qr-settings" element={<QRSettings />} />
+					<Route path="/panel/personalizacion" element={<MenuEdit />} />
 					{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
 					<Route
 						path="/panel/comercio-settings"
