@@ -96,7 +96,7 @@ function createPosterHTML({
       ">
         ${
           logo
-            ? `<img src="${logo}" style="width:300px; object-fit:contain;" />`
+            ? `<img src="${logo}" style="width:200px; object-fit:contain;" />`
             : `<div style="font-size:21px; letter-spacing:1px; font-weight:400;">(LOGO RESTO)</div>`
         }
       </div>

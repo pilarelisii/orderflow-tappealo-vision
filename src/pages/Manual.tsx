@@ -18,6 +18,12 @@ import {
 	Store,
 	UtensilsCrossed,
 	X,
+	Phone,
+	BellRing,
+	Clock3,
+	StickyNote,
+	ArrowUpDown,
+	WalletCards,
 	type LucideIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -43,16 +49,29 @@ const sections: SectionItem[] = [
 				label: "Gestionar Categorías",
 				icon: FolderCog,
 			},
+			{
+				id: "ordenar-categorias",
+				label: "Ordenar Categorías",
+				icon: ArrowUpDown,
+			},
 			{ id: "productos-destacados", label: "Productos Destacados", icon: Star },
 			{ id: "editar-productos", label: "Editar Productos", icon: Pencil },
+			{
+				id: "notas-productos",
+				label: "Notas y Descripciones",
+				icon: StickyNote,
+			},
 		],
 	},
 	{ id: "promociones", label: "Promociones", icon: BadgePercent },
 	{ id: "qrs", label: "Gestión de QR", icon: QrCode },
 	{ id: "comercio", label: "Comercio", icon: Store },
+	{ id: "datos-cliente", label: "Datos del Cliente", icon: Phone },
+	{ id: "llamados", label: "Llamados de Mesa", icon: BellRing },
+	{ id: "ordenes-viejas", label: "Órdenes Viejas", icon: Clock3 },
 	{ id: "metodos-pago", label: "Métodos de Pago", icon: CreditCard },
+	{ id: "pagos-mesa-caja", label: "Pagos Mesa / Caja", icon: WalletCards },
 ];
-
 export default function Manual() {
 	const [activeSection, setActiveSection] = useState("vista-principal");
 	const [menuOpen, setMenuOpen] = useState(true);
@@ -591,7 +610,180 @@ export default function Manual() {
 
 							<InfoCard text="Mantener esta información actualizada transmite confianza y mejora la experiencia del cliente." />
 						</Section>
+						<Section
+							id="ordenar-categorias"
+							title="Ordenar Categorías"
+							icon={ArrowUpDown}
+							number="08"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Esta funcionalidad permite definir el orden en el que las
+								categorías aparecen en el menú público. Es útil para mostrar
+								primero las secciones más importantes, como promociones,
+								entradas, principales, bebidas o postres.
+							</Paragraph>
 
+							<Checklist
+								items={[
+									"Reordenar categorías desde el panel de administración.",
+									"Mostrar primero las categorías más relevantes para la venta.",
+									"Actualizar el orden del menú público automáticamente.",
+									"Facilitar que el cliente encuentre rápido lo que quiere pedir.",
+								]}
+							/>
+						</Section>
+
+						<Section
+							id="notas-productos"
+							title="Notas Adicionales y Descripción"
+							icon={StickyNote}
+							number="09"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								El sistema permite mostrar descripciones claras de los productos
+								y también habilitar notas adicionales para que el cliente pueda
+								aclarar preferencias al realizar el pedido.
+							</Paragraph>
+
+							<Grid>
+								<FeatureCard
+									title="Descripción del producto"
+									description="Texto visible en el menú para explicar ingredientes, tamaño, preparación o detalles importantes."
+								/>
+								<FeatureCard
+									title="Notas del cliente"
+									description="Campo donde el cliente puede escribir aclaraciones, por ejemplo: sin cebolla, poco hielo o sin sal."
+								/>
+								<FeatureCard
+									title="Mejor comunicación"
+									description="Ayuda a reducir errores y evita que el mozo tenga que volver a confirmar detalles del pedido."
+								/>
+							</Grid>
+						</Section>
+
+						<Section
+							id="datos-cliente"
+							title="Datos del Cliente"
+							icon={Phone}
+							number="12"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Desde la configuración del comercio se puede definir qué datos
+								se le piden al cliente antes de confirmar el pedido.
+							</Paragraph>
+
+							<Checklist
+								items={[
+									"El restaurante puede decidir si el teléfono será obligatorio u opcional.",
+									"Si el teléfono no es obligatorio, el cliente puede continuar sin cargarlo.",
+									"El nombre puede usarse para identificar mejor el pedido.",
+									"Esta configuración permite adaptar el flujo según el tipo de comercio.",
+								]}
+							/>
+
+							<InfoCard text="Ejemplo: en un restaurante con mesas puede no ser necesario pedir teléfono, pero para retiro o envío puede ser útil solicitarlo." />
+						</Section>
+
+						<Section
+							id="llamados"
+							title="Llamar al Mozo y Pedir la Cuenta"
+							icon={BellRing}
+							number="13"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								El cliente puede realizar llamados desde el menú digital sin
+								tener que esperar o hacer señas. El restaurante puede decidir si
+								esta funcionalidad estará activa o no.
+							</Paragraph>
+
+							<Grid>
+								<FeatureCard
+									title="Llamar al mozo"
+									description="El cliente puede solicitar atención desde la mesa."
+								/>
+								<FeatureCard
+									title="Pedir la cuenta"
+									description="El cliente puede avisar que desea cerrar su consumo."
+								/>
+								<FeatureCard
+									title="Función opcional"
+									description="El comercio puede activar o desactivar los llamados según su operación."
+								/>
+							</Grid>
+						</Section>
+
+						<Section
+							id="ordenes-viejas"
+							title="Borrado de Órdenes Viejas"
+							icon={Clock3}
+							number="14"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Para mantener el panel limpio, el sistema puede ocultar o
+								eliminar automáticamente las órdenes viejas al comenzar un nuevo
+								día operativo.
+							</Paragraph>
+
+							<Checklist
+								items={[
+									"Las órdenes terminadas de días anteriores dejan de aparecer en el panel principal.",
+									"Las órdenes activas no se eliminan mientras sigan en proceso.",
+									"El panel queda limpio para comenzar el nuevo día.",
+									"El historial permite conservar el registro de pedidos anteriores.",
+								]}
+							/>
+
+							<WarningCard text="Importante: esta función debe afectar principalmente a órdenes terminadas, para no perder pedidos que todavía estén pendientes, en preparación o listos." />
+						</Section>
+
+						<Section
+							id="pagos-mesa-caja"
+							title="Métodos de Pago en Mesa y en Caja"
+							icon={WalletCards}
+							number="15"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Tappealo permite diferenciar los métodos de pago según el tipo
+								de operación. El comercio puede definir si el cliente paga desde
+								la mesa o si el pago se realiza en caja.
+							</Paragraph>
+
+							<Grid>
+								<FeatureCard
+									title="Pago en mesa"
+									description="El cliente puede elegir medios habilitados para pagar directamente desde el menú."
+								/>
+								<FeatureCard
+									title="Pago en caja"
+									description="El pedido se confirma y el cliente abona luego en el mostrador o con el personal."
+								/>
+								<FeatureCard
+									title="Mercado Pago visible"
+									description="El botón de Mercado Pago debe mostrarse de forma clara y destacada cuando esté disponible."
+								/>
+							</Grid>
+
+							<Checklist
+								items={[
+									"Diferenciar métodos disponibles para mesa y para caja.",
+									"Hacer más visible el botón de Mercado Pago.",
+									"Permitir efectivo, tarjeta o Mercado Pago según configuración.",
+									"Evitar confusión en el cliente al momento de confirmar el pedido.",
+								]}
+							/>
+						</Section>
 						<Section
 							id="metodos-pago"
 							title="Métodos de Pago"

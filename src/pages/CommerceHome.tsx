@@ -15,7 +15,8 @@ import {
 	Store,
 	Printer,
 	Tag,
-	Book
+	Book,
+	PencilLine,
 } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ import {
 } from "@/components/ui/sheet";
 import Notifications from "@/components/Notifications";
 import FullScreenLoader from "@/components/FullScreenLoader";
-import Componente from "@/components/Componente";
 
 
 const columns: { title: string; status: OrderStatus }[] = [
@@ -122,7 +122,7 @@ const CommerceHome = () => {
 					<img src={tappealoLogo} alt="Tappealo" className="w-16" />
 					<div className="border-l border-border pl-4">
 						<p className="font-semibold text-foreground">{venue.name}</p>
-						<p className="text-xs text-muted-foreground">/{venue.slug}</p>
+						<p className="text-xs text-muted-foreground">/menu/{venue.slug}</p>
 					</div>
 				</div>
 
@@ -210,7 +210,7 @@ const CommerceHome = () => {
 					</Button>
 				</div>
 			</header>
-		
+
 			{venue?.plan === "demo" && (
 				<div className="px-6 py-4 bg-background">
 					<h1 className="text-xl font-bold text-foreground opacity-80">
@@ -267,7 +267,9 @@ const CommerceHome = () => {
 						))}
 					</div>
 					<div className="w-full flex md:flex-row flex-col justify-between gap-14">
-						<Notifications />
+						
+						<Notifications visible={venue?.calls}/>
+											
 						<OrderHistory
 							availableDates={getAvailableDates()}
 							getOrdersByDate={getOrdersByDate}

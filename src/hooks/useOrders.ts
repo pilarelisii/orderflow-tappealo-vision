@@ -6,186 +6,204 @@ import { useAuth } from "@/hooks/useAuth";
 
 import { db } from "@/integrations/firebase/client";
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  updateDoc,
-  doc,
-  Timestamp,
+	collection,
+	query,
+	where,
+	onSnapshot,
+	updateDoc,
+	doc,
+	Timestamp,
 } from "firebase/firestore";
 import { useQrLocationsMap } from "./useQrLocationsMap";
 
 const toIso = (v: any) => {
-  if (!v) return new Date().toISOString();
-  if (typeof v === "string") return new Date(v).toISOString();
-  if (v instanceof Timestamp) return v.toDate().toISOString();
-  if (v?.toDate) return v.toDate().toISOString();
-  return new Date().toISOString();
+	if (!v) return new Date().toISOString();
+	if (typeof v === "string") return new Date(v).toISOString();
+	if (v instanceof Timestamp) return v.toDate().toISOString();
+	if (typeof v?.toDate === "function") return v.toDate().toISOString();
+	return new Date(v).toISOString();
+};
+
+const isToday = (dateValue: any) => {
+	const d = new Date(dateValue);
+	const today = new Date();
+
+	return (
+		d.getFullYear() === today.getFullYear() &&
+		d.getMonth() === today.getMonth() &&
+		d.getDate() === today.getDate()
+	);
 };
 
 const mapDocToOrder = (id: string, data: any): Order => ({
-  id,
-  items: data.items ?? [],
-  additional_comments: data.additional_comments ?? null,
-  qr_location_id: data.qr_location_id ?? "sin-ubicacion",
-  phone: data.phone ?? null,
-  name: data.name ?? null, // ✅ FIX (antes decía data.nombre)
-  total: Number(data.total ?? 0),
-  status: (data.status ?? "entrante") as OrderStatus,
-  created_at: toIso(data.created_at),
-  updated_at: toIso(data.updated_at),
-  ref_order_id: data.ref_order_id ?? null,
-  payment_method: data.payment_method ?? null,
-  venue_id: data.venue_id ?? null,
+	id,
+	items: data.items ?? [],
+	additional_comments: data.additional_comments ?? null,
+	qr_location_id: data.qr_location_id ?? "sin-ubicacion",
+	phone: data.phone ?? null,
+	name: data.name ?? null,
+	total: Number(data.total ?? 0),
+	status: (data.status ?? "entrante") as OrderStatus,
+	created_at: toIso(data.created_at),
+	updated_at: toIso(data.updated_at),
+	ref_order_id: data.ref_order_id ?? null,
+	payment_method: data.payment_method ?? null,
+	venue_id: data.venue_id ?? null,
 });
 
 export function useOrders() {
-  const { venue } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+	const { venue } = useAuth();
+	const [orders, setOrders] = useState<Order[]>([]);
+	const [loading, setLoading] = useState(true);
 
-  const { toast } = useToast();
-  const { playNotificationSound } = useNotificationSound();
+	const { toast } = useToast();
+	const { playNotificationSound } = useNotificationSound();
 
-  // ✅ qrMap sin romper deps
-  const qrMap = useQrLocationsMap(venue?.id);
-  const qrMapRef = useRef<Record<string, string>>({});
+	const qrMap = useQrLocationsMap(venue?.id);
+	const qrMapRef = useRef<Record<string, string>>({});
 
-  useEffect(() => {
-    qrMapRef.current = qrMap || {};
-  }, [qrMap]);
+	useEffect(() => {
+		qrMapRef.current = qrMap || {};
+	}, [qrMap]);
 
-  // ✅ refs estables
-  const toastRef = useRef(toast);
-  const playNotificationSoundRef = useRef(playNotificationSound);
+	const toastRef = useRef(toast);
+	const playNotificationSoundRef = useRef(playNotificationSound);
 
-  useEffect(() => {
-    toastRef.current = toast;
-  }, [toast]);
+	useEffect(() => {
+		toastRef.current = toast;
+	}, [toast]);
 
-  useEffect(() => {
-    playNotificationSoundRef.current = playNotificationSound;
-  }, [playNotificationSound]);
+	useEffect(() => {
+		playNotificationSoundRef.current = playNotificationSound;
+	}, [playNotificationSound]);
 
-  const initialized = useRef(false);
-  const seenOrderIdsRef = useRef<Set<string>>(new Set());
-  const firstSnapshotRef = useRef(true);
+	const seenOrderIdsRef = useRef<Set<string>>(new Set());
+	const firstSnapshotRef = useRef(true);
 
-  useEffect(() => {
-    if (!venue?.id) {
-      setOrders([]);
-      setLoading(false);
-      initialized.current = false;
-      return;
-    }
-    
-    // ✅ NO orderBy: evita depender de índices y evita problemas de timestamp/campos
-    const q = query(
-      collection(db, "orders"),
-      where("venue_id", "==", venue.id)
-    );
+	useEffect(() => {
+		if (!venue?.id) {
+			setOrders([]);
+			setLoading(false);
+			firstSnapshotRef.current = true;
+			seenOrderIdsRef.current = new Set();
+			return;
+		}
 
-    const unsubscribe = onSnapshot(
-  q,
-  (snapshot) => {
-    const list = snapshot.docs
-      .map((d) => mapDocToOrder(d.id, d.data()))
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+		setLoading(true);
+		firstSnapshotRef.current = true;
+		seenOrderIdsRef.current = new Set();
 
-    // Primer snapshot real: cargamos órdenes existentes, pero NO notificamos.
-    if (firstSnapshotRef.current) {
-      seenOrderIdsRef.current = new Set(snapshot.docs.map((d) => d.id));
-      firstSnapshotRef.current = false;
+		const q = query(
+			collection(db, "orders"),
+			where("venue_id", "==", venue.id)
+		);
 
-      setOrders(list);
-      setLoading(false);
-      return;
-    }
+		const unsubscribe = onSnapshot(
+			q,
+			(snapshot) => {
+				const list = snapshot.docs
+					.map((d) => mapDocToOrder(d.id, d.data()))
+					.sort(
+						(a, b) =>
+							new Date(b.created_at).getTime() -
+							new Date(a.created_at).getTime()
+					);
 
-    snapshot.docChanges().forEach((change) => {
-      if (change.type !== "added") return;
+				if (firstSnapshotRef.current) {
+					seenOrderIdsRef.current = new Set(snapshot.docs.map((d) => d.id));
+					firstSnapshotRef.current = false;
 
-      const orderId = change.doc.id;
+					setOrders(list);
+					setLoading(false);
+					return;
+				}
 
-      // Si ya lo vimos, no notificar.
-      if (seenOrderIdsRef.current.has(orderId)) return;
+				snapshot.docChanges().forEach((change) => {
+					if (change.type !== "added") return;
 
-      seenOrderIdsRef.current.add(orderId);
+					const orderId = change.doc.id;
 
-      const o = mapDocToOrder(orderId, change.doc.data());
+					if (seenOrderIdsRef.current.has(orderId)) return;
 
-      playNotificationSoundRef.current();
+					seenOrderIdsRef.current.add(orderId);
 
-      toastRef.current?.({
-        title: "🔔 Nuevo pedido",
-        description: `Pedido recibido: ${
-          qrMapRef.current[o.qr_location_id] ?? o.qr_location_id
-        }`,
-      });
-    });
+					const o = mapDocToOrder(orderId, change.doc.data());
 
-    setOrders(list);
-    setLoading(false);
-  },
-  (error) => {
-    console.error("🔥 onSnapshot error:", error);
-    setLoading(false);
-    toastRef.current?.({
-      title: "Error",
-      description: "No se pudieron cargar los pedidos en tiempo real",
-      variant: "destructive",
-    });
-  }
-);
-  
-    return () => unsubscribe();
-  }, [venue?.id]);
+					playNotificationSoundRef.current();
 
-  const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
-    await updateDoc(doc(db, "orders", order.id), {
-      status: newStatus,
-      updated_at: Timestamp.now(),
-    });
-  };
+					toastRef.current?.({
+						title: "🔔 Nuevo pedido",
+						description: `Pedido recibido: ${
+							qrMapRef.current[o.qr_location_id] ?? o.qr_location_id
+						}`,
+					});
+				});
 
-  const isOrderRecent = (order: Order) => {
-    const now = Date.now();
-    const created = new Date(order.created_at).getTime();
-    return now - created <= 24 * 60 * 60 * 1000;
-  };
+				setOrders(list);
+				setLoading(false);
+			},
+			(error) => {
+				console.error("🔥 onSnapshot error:", error);
+				setLoading(false);
 
-  const getOrdersByStatus = (status: OrderStatus) =>
-    orders.filter((o) => o.status === status).filter(isOrderRecent);
+				toastRef.current?.({
+					title: "Error",
+					description: "No se pudieron cargar los pedidos en tiempo real",
+					variant: "destructive",
+				});
+			}
+		);
 
-  const getOrdersByDate = (date: Date) => {
-    const target = new Date(date);
-    target.setHours(0, 0, 0, 0);
+		return () => unsubscribe();
+	}, [venue?.id]);
 
-    return orders.filter((order) => {
-      const d = new Date(order.created_at);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime() === target.getTime();
-    });
-  };
+	const updateOrderStatus = async (order: Order, newStatus: OrderStatus) => {
+		await updateDoc(doc(db, "orders", order.id), {
+			status: newStatus,
+			updated_at: Timestamp.now(),
+		});
+	};
 
-  const getAvailableDates = () => {
-    const dates = new Set<string>();
-    orders.forEach((order) => {
-      dates.add(new Date(order.created_at).toISOString().split("T")[0]);
-    });
-    return Array.from(dates).sort((a, b) => b.localeCompare(a));
-  };
+const getOrdersByStatus = (status: OrderStatus) => {
+	return orders.filter((order) => {
+		if (order.status !== status) return false;
 
-  return {
-    orders,
-    loading,
-    getOrdersByStatus,
-    getOrdersByDate,
-    getAvailableDates,
-    updateOrderStatus,
-  };
+		// Solo la columna Terminadas filtra por día actual
+		if (status === "terminadas") {
+			return isToday(order.created_at);
+		}
+
+		// Las demás columnas muestran todas, aunque sean viejas
+		return true;
+	});
+};
+	const getOrdersByDate = (date: Date) => {
+		const target = new Date(date);
+		target.setHours(0, 0, 0, 0);
+
+		return orders.filter((order) => {
+			const d = new Date(order.created_at);
+			d.setHours(0, 0, 0, 0);
+			return d.getTime() === target.getTime();
+		});
+	};
+
+	const getAvailableDates = () => {
+		const dates = new Set<string>();
+
+		orders.forEach((order) => {
+			dates.add(new Date(order.created_at).toISOString().split("T")[0]);
+		});
+
+		return Array.from(dates).sort((a, b) => b.localeCompare(a));
+	};
+
+	return {
+		orders,
+		loading,
+		getOrdersByStatus,
+		getOrdersByDate,
+		getAvailableDates,
+		updateOrderStatus,
+	};
 }

@@ -1,174 +1,230 @@
+
 // src/hooks/useCategories.ts
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/integrations/firebase/client";
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
+	addDoc,
+	collection,
+	deleteDoc,
+	doc,
+	onSnapshot,
+	query,
+	serverTimestamp,
+	updateDoc,
+	where,
+	writeBatch,
 } from "firebase/firestore";
 
 export interface Category {
-  id: string;
-  venue_id: string;
-  name: string;
-  enabled: boolean;
-  created_at?: any;
-  updated_at?: any;
+	id: string;
+	venue_id: string;
+	name: string;
+	enabled: boolean;
+	order: number;
+	created_at?: any;
+	updated_at?: any;
 }
 
 export function useCategories() {
-  const { venue } = useAuth();
+	const { venue } = useAuth();
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [loading, setLoading] = useState(true);
 
-  // =========================
-  // LISTEN CATEGORIES (LIVE)
-  // =========================
-  useEffect(() => {
-    if (!venue?.id) {
-      setCategories([]);
-      setLoading(false);
-      return;
-    }
+	useEffect(() => {
+		if (!venue?.id) {
+			setCategories([]);
+			setLoading(false);
+			return;
+		}
 
-    setLoading(true);
+		setLoading(true);
 
-    const q = query(
-      collection(db, "categories"),
-      where("venue_id", "==", venue.id)
-    );
+		const q = query(
+			collection(db, "categories"),
+			where("venue_id", "==", venue.id)
+		);
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const list: Category[] = snap.docs.map((d) => {
-          const data = d.data() as any;
-          return {
-            id: d.id,
-            venue_id: data.venue_id ?? venue.id,
-            name: (data.name ?? "").toString(),
-            enabled: Boolean(data.enabled),
-            created_at: data.created_at,
-            updated_at: data.updated_at,
-          };
-        });
+		const unsub = onSnapshot(
+			q,
+			(snap) => {
+				const list: Category[] = snap.docs.map((d) => {
+					const data = d.data() as any;
 
-        setCategories(list);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("useCategories onSnapshot error:", err);
-        toast.error("Error al cargar categorías");
-        setCategories([]);
-        setLoading(false);
-      }
-    );
+					return {
+						id: d.id,
+						venue_id: data.venue_id ?? venue.id,
+						name: (data.name ?? "").toString(),
+						enabled: Boolean(data.enabled),
+						order: Number(data.order ?? 9999),
+						created_at: data.created_at,
+						updated_at: data.updated_at,
+					};
+				});
 
-    return () => unsub();
-  }, [venue?.id]);
+				setCategories(list);
+				setLoading(false);
+			},
+			(err) => {
+				console.error("useCategories onSnapshot error:", err);
+				toast.error("Error al cargar categorías");
+				setCategories([]);
+				setLoading(false);
+			}
+		);
 
-  // =========================
-  // DERIVED: enabled + sorted
-  // =========================
-  const enabledCategories = useMemo(() => {
-    const copy = [...categories].filter((c) => c.enabled);
-    copy.sort((a, b) => a.name.localeCompare(b.name));
-    return copy;
-  }, [categories]);
+		return () => unsub();
+	}, [venue?.id]);
 
-  // =========================
-  // CRUD
-  // =========================
-  const createCategory = async (name: string) => {
-    if (!venue?.id) return;
+	const sortCategories = (list: Category[]) => {
+		return [...list].sort((a, b) => {
+			const orderA = Number(a.order ?? 9999);
+			const orderB = Number(b.order ?? 9999);
 
-    const clean = (name ?? "").trim();
-    if (!clean) {
-      toast.error("El nombre de la categoría es requerido");
-      return;
-    }
+			if (orderA !== orderB) return orderA - orderB;
 
-    // opcional: evitar duplicados por nombre (case-insensitive)
-    const exists = categories.some(
-      (c) => c.name.trim().toLowerCase() === clean.toLowerCase()
-    );
-    if (exists) {
-      toast.error("Ya existe una categoría con ese nombre");
-      return;
-    }
+			return a.name.localeCompare(b.name);
+		});
+	};
 
-    await addDoc(collection(db, "categories"), {
-      venue_id: venue.id,
-      name: clean,
-      enabled: true,
-      created_at: serverTimestamp(),
-      updated_at: serverTimestamp(),
-    });
+	const orderedCategories = useMemo(() => {
+		return sortCategories(categories);
+	}, [categories]);
 
-    // No hace falta setCategories acá: onSnapshot refresca solo
-  };
+	const enabledCategories = useMemo(() => {
+		return sortCategories(categories.filter((c) => c.enabled));
+	}, [categories]);
 
-  const renameCategory = async (categoryId: string, name: string) => {
-    if (!venue?.id) return;
+	const createCategory = async (name: string) => {
+		if (!venue?.id) return;
 
-    const clean = (name ?? "").trim();
-    if (!clean) {
-      toast.error("El nombre de la categoría es requerido");
-      return;
-    }
+		const clean = (name ?? "").trim();
 
-    // opcional: evitar duplicados por nombre (case-insensitive)
-    const exists = categories.some(
-      (c) =>
-        c.id !== categoryId &&
-        c.name.trim().toLowerCase() === clean.toLowerCase()
-    );
-    if (exists) {
-      toast.error("Ya existe una categoría con ese nombre");
-      return;
-    }
+		if (!clean) {
+			toast.error("El nombre de la categoría es requerido");
+			return;
+		}
 
-    await updateDoc(doc(db, "categories", categoryId), {
-      name: clean,
-      updated_at: serverTimestamp(),
-    });
-  };
+		const exists = categories.some(
+			(c) => c.name.trim().toLowerCase() === clean.toLowerCase()
+		);
 
-  const setCategoryEnabled = async (categoryId: string, enabled: boolean) => {
-    await updateDoc(doc(db, "categories", categoryId), {
-      enabled: Boolean(enabled),
-      updated_at: serverTimestamp(),
-    });
-  };
+		if (exists) {
+			toast.error("Ya existe una categoría con ese nombre");
+			return;
+		}
 
-  const getNameById = (id: string) => {
-    if (!id || id === "SIN CATEGORIA") return "SIN CATEGORIA";
-    const c = categories.find((x) => x.id === id);
-    return c?.name ?? "SIN CATEGORIA";
-  };
+		const nextOrder =
+			categories.length > 0
+				? Math.max(...categories.map((c) => Number(c.order ?? 0))) + 1
+				: 1;
 
-  const deleteCategory = async (categoryId: string) => {
-    await deleteDoc(doc(db, "categories", categoryId));
-  };
+		await addDoc(collection(db, "categories"), {
+			venue_id: venue.id,
+			name: clean,
+			enabled: true,
+			order: nextOrder,
+			created_at: serverTimestamp(),
+			updated_at: serverTimestamp(),
+		});
+	};
 
-  return {
-    categories,          // todas (incluye enabled=false)
-    enabledCategories,   // solo enabled=true y ordenadas
-    loading,
+	const renameCategory = async (categoryId: string, name: string) => {
+		if (!venue?.id) return;
 
-    getNameById,
-    createCategory,
-    renameCategory,
-    setCategoryEnabled,
-    deleteCategory,
-  };
+		const clean = (name ?? "").trim();
+
+		if (!clean) {
+			toast.error("El nombre de la categoría es requerido");
+			return;
+		}
+
+		const exists = categories.some(
+			(c) =>
+				c.id !== categoryId &&
+				c.name.trim().toLowerCase() === clean.toLowerCase()
+		);
+
+		if (exists) {
+			toast.error("Ya existe una categoría con ese nombre");
+			return;
+		}
+
+		await updateDoc(doc(db, "categories", categoryId), {
+			name: clean,
+			updated_at: serverTimestamp(),
+		});
+	};
+
+	const setCategoryEnabled = async (categoryId: string, enabled: boolean) => {
+		await updateDoc(doc(db, "categories", categoryId), {
+			enabled: Boolean(enabled),
+			updated_at: serverTimestamp(),
+		});
+	};
+
+	const reorderCategories = async (orderedIds: string[]) => {
+		const batch = writeBatch(db);
+
+		orderedIds.forEach((categoryId, index) => {
+			const ref = doc(db, "categories", categoryId);
+
+			batch.update(ref, {
+				order: index + 1,
+				updated_at: serverTimestamp(),
+			});
+		});
+
+		await batch.commit();
+	};
+
+	const moveCategory = async (
+		categoryId: string,
+		direction: "up" | "down"
+	) => {
+		const sorted = sortCategories(categories);
+		const currentIndex = sorted.findIndex((c) => c.id === categoryId);
+
+		if (currentIndex === -1) return;
+
+		const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+		if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+		const newList = [...sorted];
+		const current = newList[currentIndex];
+
+		newList[currentIndex] = newList[targetIndex];
+		newList[targetIndex] = current;
+
+		await reorderCategories(newList.map((c) => c.id));
+	};
+
+	const getNameById = (id: string) => {
+		if (!id || id === "SIN CATEGORIA") return "SIN CATEGORIA";
+
+		const c = categories.find((x) => x.id === id);
+
+		return c?.name ?? "SIN CATEGORIA";
+	};
+
+	const deleteCategory = async (categoryId: string) => {
+		await deleteDoc(doc(db, "categories", categoryId));
+	};
+
+	return {
+		categories: orderedCategories,
+		enabledCategories,
+		loading,
+
+		getNameById,
+		createCategory,
+		renameCategory,
+		setCategoryEnabled,
+		deleteCategory,
+		reorderCategories,
+		moveCategory,
+	};
 }

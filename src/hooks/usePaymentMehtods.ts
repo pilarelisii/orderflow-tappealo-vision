@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 
-export type PaymentType = "MP" | "EF" | "TC" | "TD";
+export type PaymentType = "MP" | "EF" | "TC" | "TD" | "EF_Counter";
 
 export interface PaymentMethod {
   id: string;
@@ -25,10 +25,11 @@ export interface PaymentMethod {
 }
 
 const DEFAULTS: Record<PaymentType, { name: string }> = {
-  EF: { name: "Efectivo" },
+  EF: { name: "Efectivo/Tarjeta en mesa" },
   MP: { name: "Mercado Pago" },
   TD: { name: "Tarjeta Débito" },
   TC: { name: "Tarjeta Crédito" },
+  EF_Counter: {name: "Efectivo/tarjeta en caja"}
 };
 
 function docId(venueId: string, type: PaymentType) {

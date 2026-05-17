@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { Bell, BellDot } from "lucide-react";
+import { Bell, BellDot, Receipt } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useCalls } from "@/hooks/useCalls";
@@ -25,7 +25,7 @@ function formatHour(ts: any) {
 	}
 }
 
-export default function Notifications() {
+export default function Notifications({visible}) {
 	const { venue } = useAuth();
 
 	const { calls, pendingCount, loading, markSeen, resolve } = useCalls({
@@ -42,6 +42,9 @@ export default function Notifications() {
 		});
 	}, [calls]);
 
+
+	
+	if(!visible) return null;
 	if (loading) {
 		return (
 			<div className="mt-6 flex-1">
@@ -53,7 +56,7 @@ export default function Notifications() {
 			</div>
 		);
 	}
-
+	
 	return (
 		<div className="mt-6 flex-1">
 			<div className="flex items-center justify-between mb-4">
@@ -77,19 +80,43 @@ export default function Notifications() {
 						const time = formatHour(c.created_at ?? c.created_at_ms);
                         const status = (c.status ?? "pending");
 						const checked = c.status === "seen" || c.status === "resolved";
+						const type = c.type;
 
 						return (
 							<Card key={c.id} className="overflow-hidden">
 								<div className="w-full p-4 flex items-center justify-between">
 									<div className="flex items-center gap-3">
-										<div className="bg-primary/10 rounded-full p-2">
-											<BellDot className="w-4 h-4 text-primary" />
+										<div
+											className={`rounded-full p-2 ${
+												type === "bill" ? "bg-green-500/10" : "bg-primary/10"
+											}`}
+										>
+											{type === "bill" ? (
+												<Receipt className="w-4 h-4 text-green-600" />
+											) : (
+												<BellDot className="w-4 h-4 text-primary" />
+											)}
 										</div>
 
 										<div className="text-left">
-											<p className="font-semibold text-foreground capitalize">
-												{title}
-											</p>
+											<div className="flex items-center gap-2">
+												<p className="font-semibold text-foreground capitalize">
+													{title}
+												</p>
+
+												<span
+													className={`text-xs px-2 py-1 rounded-full font-medium ${
+														type === "bill"
+															? "bg-green-100 text-green-700"
+															: "bg-blue-100 text-blue-700"
+													}`}
+												>
+													{type === "bill"
+														? "Pedido de cuenta"
+														: "Llamado al mozo"}
+												</span>
+											</div>
+
 											{time ? (
 												<p className="text-sm text-muted-foreground">{time}</p>
 											) : null}

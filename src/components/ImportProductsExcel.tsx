@@ -76,11 +76,16 @@ export function ImportProductsExcel({ venueId }: Props) {
 			);
 
 			const categoryMap = new Map<string, { id: string; name: string }>();
-
+				let nextCategoryOrder = 1;
 			categoriesSnap.forEach((docSnap) => {
 				const data = docSnap.data() as any;
 				const name = String(data.name || "").trim();
 				if (!name) return;
+				const order = Number(data.order ?? 0);
+
+				if (order >= nextCategoryOrder) {
+					nextCategoryOrder = order + 1;
+				}
 
 				categoryMap.set(normalizeCategoryKey(name), {
 					id: docSnap.id,
@@ -97,11 +102,12 @@ export function ImportProductsExcel({ venueId }: Props) {
 					const newCategoryRef = await addDoc(collection(db, "categories"), {
 						venue_id: venueId,
 						name: categoryName,
+						order: nextCategoryOrder,
 						enabled: true,
 						created_at: serverTimestamp(),
 						updated_at: serverTimestamp(),
 					});
-
+					nextCategoryOrder++;
 					categoryMap.set(categoryKey, {
 						id: newCategoryRef.id,
 						name: categoryName,

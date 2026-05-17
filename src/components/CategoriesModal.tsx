@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Pencil, Save, Trash2, X, Plus } from "lucide-react";
+import { Loader2, Pencil, Save, Trash2, X, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { useCategories } from "@/hooks/useCategories";
 
@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function CategoriesModal({ open, onOpenChange }: Props) {
-  const { categories, loading, createCategory, renameCategory, deleteCategory, setCategoryEnabled } = useCategories();
+  const { categories, loading, createCategory, renameCategory, deleteCategory, setCategoryEnabled, moveCategory } = useCategories();
 
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -23,11 +23,11 @@ export function CategoriesModal({ open, onOpenChange }: Props) {
 
   
 
-  const sorted = useMemo(() => {
-    const copy = [...categories];
-    copy.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    return copy;
-  }, [categories]);
+  // const sorted = useMemo(() => {
+  //   const copy = [...categories];
+  //   copy.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  //   return copy;
+  // }, [categories]);
 
   const startEdit = (id: string, current: string) => {
     setEditingId(id);
@@ -61,79 +61,110 @@ export function CategoriesModal({ open, onOpenChange }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Gestionar categorías</DialogTitle>
-        </DialogHeader>
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-lg">
+				<DialogHeader>
+					<DialogTitle>Gestionar categorías</DialogTitle>
+				</DialogHeader>
 
-        {/* Crear */}
-        <div className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nombre de la categoría"
-          />
-          <Button onClick={add} disabled={!newName.trim() || loading}>
-            <Plus className="h-4 w-4 mr-1" />
-            Agregar
-          </Button>
-        </div>
+				{/* Crear */}
+				<div className="flex gap-2">
+					<Input
+						value={newName}
+						onChange={(e) => setNewName(e.target.value)}
+						placeholder="Nombre de la categoría"
+					/>
+					<Button onClick={add} disabled={!newName.trim() || loading}>
+						<Plus className="h-4 w-4 mr-1" />
+						Agregar
+					</Button>
+				</div>
 
-        {/* Lista */}
-        <div className="mt-4 space-y-2">
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin" />
-            </div>
-          ) : sorted.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todavía no hay categorías.</p>
-          ) : (
-            sorted.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 border border-border rounded-lg p-2">
-                <Switch
-                  checked={!!c.enabled}
-                  onCheckedChange={(v) => setCategoryEnabled(c.id, v)}
-                />
+				{/* Lista */}
+				<div className="mt-4 space-y-2">
+					{loading ? (
+						<div className="flex justify-center py-6">
+							<Loader2 className="h-5 w-5 animate-spin" />
+						</div>
+					) : categories.length === 0 ? (
+						<p className="text-sm text-muted-foreground">
+							Todavía no hay categorías.
+						</p>
+					) : (
+						categories.map((c, index) => (
+							<div
+								key={c.id}
+								className="flex items-center gap-2 border border-border rounded-lg p-2"
+							>
+								<Switch
+									checked={!!c.enabled}
+									onCheckedChange={(v) => setCategoryEnabled(c.id, v)}
+								/>
 
-                <div className="flex-1">
-                  {editingId === c.id ? (
-                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
-                  ) : (
-                    <p className="font-medium">{c.name}</p>
-                  )}
-                </div>
+								<div className="flex-1">
+									{editingId === c.id ? (
+										<Input
+											value={editName}
+											onChange={(e) => setEditName(e.target.value)}
+										/>
+									) : (
+										<p className="font-medium">{c.name}</p>
+									)}
+								</div>
 
-                {editingId === c.id ? (
-                  <>
-                    <Button variant="outline" size="icon" onClick={saveEdit}>
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={cancelEdit}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button variant="outline" size="icon" onClick={() => startEdit(c.id, c.name)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
-                      onClick={() => deleteCategory(c.id)}
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+								{editingId === c.id ? (
+									<>
+										<Button variant="outline" size="icon" onClick={saveEdit}>
+											<Save className="h-4 w-4" />
+										</Button>
+										<Button variant="ghost" size="icon" onClick={cancelEdit}>
+											<X className="h-4 w-4" />
+										</Button>
+									</>
+								) : (
+									<>
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => moveCategory(c.id, "up")}
+											disabled={index === 0}
+											title="Subir categoría"
+										>
+											<ArrowUp className="h-4 w-4" />
+										</Button>
+
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => moveCategory(c.id, "down")}
+											disabled={index === categories.length - 1}
+											title="Bajar categoría"
+										>
+											<ArrowDown className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											onClick={() => startEdit(c.id, c.name)}
+										>
+											<Pencil className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="text-destructive"
+											onClick={() => deleteCategory(c.id)}
+											title="Eliminar"
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</>
+								)}
+							</div>
+						))
+					)}
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
 }

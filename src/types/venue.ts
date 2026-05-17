@@ -17,4 +17,7 @@ export interface Venue {
   social_link: string | null;
   created_at: string;
   logo_data_url: string | null;
+  additional_content: string | null;
+  calls: boolean;
+  phone_client: boolean;
 }

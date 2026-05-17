@@ -15,6 +15,7 @@ import {
 	CreditCard,
 	Eye,
 	EyeOff,
+	NotebookPen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ import { db, storage } from "@/integrations/firebase/client";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import FullScreenLoader from "@/components/FullScreenLoader";
+import { Textarea } from "@/components/ui/textarea";
 
 const isImage = (f: File) => f.type?.startsWith("image/")
 const max5mb = (f: File) => f.size <= 5 * 1024 * 1024;
@@ -101,6 +103,9 @@ const ComercioSettings = () => {
 	const [mpPublicKey, setMpPublicKey] = useState("");
 	const [mpAccessToken, setMpAccessToken] = useState("");
 	const [showAccessToken, setShowAccessToken] = useState(false);
+	const [additionalContent, setAdditionalContent] = useState("");
+	const [phone_client, setPhoneClient] = useState(true);
+	const [calls, setCalls] = useState(true);
 
 	// ✅ logo
 	const [logoUrl, setLogoUrl] = useState<string>("");
@@ -145,10 +150,13 @@ const ComercioSettings = () => {
 				setAddress1((data.address_1 || "").toString());
 				setAddress2((data.address_2 || "").toString());
 				setSocialLink((data.social_link || "").toString());
-
+				setAdditionalContent((data.additional_content || "").toString());
+				setCalls(data.calls ?? true);
+				setPhoneClient(data.phone_client ?? true);
+				
 				const existingLogo = (data.logo_url || "").toString();
 				setLogoUrl(existingLogo);
-				setLogoPreview(existingLogo); // preview inicial = logo guardado
+				setLogoPreview(existingLogo);
 			} catch (error) {
 				console.error("Error fetching venue data:", error);
 				toast.error("Error al cargar los datos del comercio");
@@ -159,6 +167,51 @@ const ComercioSettings = () => {
 
 		fetchVenueData();
 	}, [venue?.id]);
+
+	async function compressImageToDataUrl(
+		file: File,
+		maxWidth = 400,
+		quality = 0.75
+	): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			const reader = new FileReader();
+
+			reader.onload = () => {
+				img.onload = () => {
+					const scale = Math.min(1, maxWidth / img.width);
+					const canvas = document.createElement("canvas");
+
+					canvas.width = Math.round(img.width * scale);
+					canvas.height = Math.round(img.height * scale);
+
+					const ctx = canvas.getContext("2d");
+					if (!ctx) return reject(new Error("No se pudo procesar la imagen"));
+
+					ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+					const mimeType =
+						file.type === "image/png" ? "image/png" : "image/jpeg";
+
+					const dataUrl = canvas.toDataURL(mimeType, quality);
+
+					if (dataUrl.length > 900_000) {
+						return reject(
+							new Error("LOGO_DATA_URL_TOO_LARGE")
+						);
+					}
+
+					resolve(dataUrl);
+				};
+
+				img.onerror = reject;
+				img.src = String(reader.result);
+			};
+
+			reader.onerror = reject;
+			reader.readAsDataURL(file);
+		});
+	}
 
 	const handleLogoSelect = (file: File) => {
 		if (!isImage(file)) {
@@ -177,6 +230,7 @@ const ComercioSettings = () => {
 		setLogoFile(file);
 		setLogoPreview(preview);
 	};
+
 
 	const handleSave = async () => {
 		if (!venue?.id) return;
@@ -202,7 +256,7 @@ const ComercioSettings = () => {
 			// 2) Subir logo primero (si hay archivo)
 			if (logoFile) {
 				try {
-					nextLogoDataUrl = await fileToDataUrl(logoFile);
+					nextLogoDataUrl = await compressImageToDataUrl(logoFile);
 					const ext = (logoFile.name.split(".").pop() || "jpg").toLowerCase();
 					const path = `venues/${venue.id}/logo/logo.${ext}`;
 					const fileRef = ref(storage, path);
@@ -230,6 +284,9 @@ const ComercioSettings = () => {
 				address_1: address1.trim() || null,
 				address_2: address2.trim() || null,
 				social_link: socialLink.trim() || null,
+				additional_content: additionalContent.trim() || null,
+				phone_client: phone_client,
+				calls: calls,
 
 				location_link: normalizedMapsUrl,
 				location_embed,
@@ -256,10 +313,24 @@ const ComercioSettings = () => {
 			setLogoFile(null);
 
 			toast.success("Datos del comercio actualizados");
-		} catch (error) {
-			console.error("Error updating commerce data:", error);
-			toast.error("Error al actualizar los datos del comercio");
-		} finally {
+		} catch (error: any) {
+				console.error("Error updating commerce data:", error);
+
+				if (error?.message === "LOGO_DATA_URL_TOO_LARGE") {
+					toast.error("El logo es demasiado pesado. Probá subir una imagen más simple o más liviana.");
+					return;
+				}
+
+				if (
+					error?.message?.includes("longer than") ||
+					error?.message?.includes("1048487 bytes")
+				) {
+					toast.error("El logo excede el tamaño máximo permitido para generar PDFs.");
+					return;
+				}
+
+				toast.error("Error al actualizar los datos del comercio");
+			} finally {
 			setSaving(false);
 		}
 	};
@@ -268,11 +339,11 @@ const ComercioSettings = () => {
 		const text = `Posees el plan `;
 		switch (venue?.plan) {
 			case "premium":
-				return text +`Premium`;
+				return text +`PREMIUM`;
 			case "pro":
-				return text + "Pro";
+				return text + "PRO";
 			case "basico":
-				return text + "Basico";
+				return text + "BASICO";
 			case "demo": 
 				return "Actualmente estas utilizando una Demo";
 			case "trial":
@@ -313,15 +384,17 @@ const ComercioSettings = () => {
 					</div>
 				</div>
 				<div className="bg-card border border-border rounded-lg p-6 mt-6 mb-6">
-					<div className="flex items-center justify-between py-3 border-b border-border">
+					<div className="flex items-center justify-between py-3">
 						<div>
 							<p className="font-semibold text-foreground">{renderPlan()}</p>
 						</div>
 						<a
-							href={`https://wa.me/542212021296/?text=Hola!%20soy%20${venue?.name || "un%20comercio"}%20y%20me%20gustaria%20cambiar%20de%20plan`}
+							href={`https://wa.me/542212021296/?text=Hola!%20soy%20${
+								venue?.name || "un%20comercio"
+							}%20y%20me%20gustaria%20cambiar%20de%20plan`}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="rounded-2xl border border-[#5a351f] bg-[#fff7ec] px-5 py-3 text-sm font-bold text-[#5a351f] transition hover:scale-[1.03] block"
+							className="rounded-2xl border border-[#5a351f] bg-[#fdfbf9] px-5 py-3 text-sm font-bold text-[#5a351f] transition hover:scale-[1.03] block"
 						>
 							Cambiar plan
 						</a>
@@ -473,6 +546,66 @@ const ComercioSettings = () => {
 								Ej: Instagram, Linktree o tu web.
 							</p>
 						</div>
+						{/* Adicionales */}
+						<div className="space-y-2">
+							<Label
+								htmlFor="aditional-content"
+								className="flex items-center gap-2"
+							>
+								<NotebookPen className="h-4 w-4" />
+								Notas adicionales / Descripción
+							</Label>
+
+							<Textarea
+								id="aditional-content"
+								placeholder="Agregá información adicional sobre tu comercio"
+								value={additionalContent}
+								onChange={(e) => setAdditionalContent(e.target.value)}
+								className="max-w-xl"
+								maxLength={500}
+							/>
+
+							<p className="text-xs text-muted-foreground">
+								Incluí aclaraciones, recomendaciones o información importante
+								que quieras que vean tus clientes.
+							</p>
+						</div>
+
+						{/* EF CAJA */}
+						<div className="flex items-center justify-between py-3 border-b border-border">
+							<div>
+								<p className="font-medium text-foreground">
+									Solicitar teléfono al cliente
+								</p>
+								<p className="text-xs text-muted-foreground">
+									El teléfono del cliente se mostrará en el pedido y podrá
+									utilizarse como medio de contacto.
+								</p>
+							</div>
+
+							<Switch
+								checked={phone_client}
+								onCheckedChange={() => setPhoneClient(!phone_client)}
+							/>
+						</div>
+
+						{/* EF MESA */}
+						<div className="flex items-center justify-between py-3 border-b border-border">
+							<div>
+								<p className="font-medium text-foreground">
+									Permitir llamados desde la mesa
+								</p>
+								<p className="text-xs text-muted-foreground">
+									Los clientes podrán solicitar asistencia directamente desde su
+									mesa.
+								</p>
+							</div>
+
+							<Switch
+								checked={calls}
+								onCheckedChange={() => setCalls(!calls)}
+							/>
+						</div>
 					</div>
 				</div>
 				<div className="bg-card border border-border rounded-lg p-6 mt-6">
@@ -489,14 +622,29 @@ const ComercioSettings = () => {
 						</div>
 					</div>
 
-					{/* EF */}
+					{/* EF CAJA */}
 					<div className="flex items-center justify-between py-3 border-b border-border">
 						<div>
 							<p className="font-medium text-foreground">
-								Efectivo / Transferencia
+								Efectivo / Tarjeta en caja
 							</p>
 							<p className="text-xs text-muted-foreground">
-								El cliente paga al retirar / recibir
+								El cliente paga al retirar / recibir en la caja
+							</p>
+						</div>
+						<Switch
+							checked={isEnabled("EF_Counter")}
+							onCheckedChange={(v) => toggle("EF_Counter", v)}
+						/>
+					</div>
+					{/* EF MESA */}
+					<div className="flex items-center justify-between py-3 border-b border-border">
+						<div>
+							<p className="font-medium text-foreground">
+								Efectivo / Tarjeta en mesa
+							</p>
+							<p className="text-xs text-muted-foreground">
+								El cliente paga al retirar / recibir desde su mesa
 							</p>
 						</div>
 						<Switch
@@ -504,7 +652,6 @@ const ComercioSettings = () => {
 							onCheckedChange={(v) => toggle("EF", v)}
 						/>
 					</div>
-
 					{/* MP */}
 					<div className="flex items-center justify-between py-3 border-b border-border">
 						<div>
@@ -588,6 +735,7 @@ const ComercioSettings = () => {
 						</div>
 					)}
 				</div>
+
 				<div className="mt-6">
 					<Button onClick={handleSave} disabled={saving}>
 						{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

@@ -1,4 +1,4 @@
-export type PaymentType = 'MP' | 'EF' | 'TC' | 'TD';
+export type PaymentType = 'MP' | 'EF' | 'TC' | 'TD' | 'EF_Counter';
 
 export interface PaymentMethod {
   id: string;

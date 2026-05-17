@@ -152,6 +152,9 @@ app.get("/public/:slug/venue", async (req, res) => {
       address_2: data.address_2 ?? null,
       plan: data.plan ?? "demo",
       enabled: Boolean(data.enabled ?? true),
+      calls: Boolean(data.calls ?? true),
+      phone_client: Boolean(data.phone_client ?? true),
+      additional_content: data.additional_content ?? null,
     });
   } catch (e) {
     console.error(e);
@@ -203,15 +206,27 @@ app.get("/public/:slug/products/categories", async (req, res) => {
 
     const list = snap.docs.map((d) => {
       const x = d.data() as any;
+
       return {
         id: d.id,
         venue_id: x.venue_id ?? null,
         name: x.name ?? null,
         enabled: Boolean(x.enabled),
+        order: Number(x.order ?? 9999),
       };
     });
 
-    list.sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+    list.sort((a, b) => {
+      const orderA = Number(a.order ?? 9999);
+      const orderB = Number(b.order ?? 9999);
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+    });
+
     return res.json(list);
   } catch (e) {
     console.error(e);
@@ -829,6 +844,14 @@ app.post("/public/:slug/calls", async (req, res) => {
       return res.status(400).json({ error: "Falta qr_location_id" });
     }
 
+    const type = String(req.body?.type ?? "").trim();
+    if (!["bill", "call"].includes(type)) {
+    return res.status(400).json({ 
+      error: "Tipo de llamada inválido",
+      code: "INVALID_CALL_TYPE",
+    });
+  }
+
     // validar QR existe y pertenece al venue
     const qrRef = db.collection("qr_locations").doc(qr_location_id);
     const qrSnap = await qrRef.get();
@@ -869,7 +892,7 @@ app.post("/public/:slug/calls", async (req, res) => {
 
     // crear call
     const callRef = db.collection("calls").doc();
-
+    
     await callRef.set({
       venue_id: venue.id,
       qr_location_id,
@@ -877,6 +900,7 @@ app.post("/public/:slug/calls", async (req, res) => {
 
       seen: false,
       resolved: false,
+      type,
 
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       seen_at: null,

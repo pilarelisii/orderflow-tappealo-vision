@@ -14,6 +14,7 @@ import {
 import type { QuerySnapshot, DocumentData } from "firebase/firestore";
 
 export type CallStatus = "pending" | "seen" | "resolved";
+export type CallTypes = "call" | "bill";
 
 export type CallDoc = {
   id: string;
@@ -25,6 +26,7 @@ export type CallDoc = {
   created_at_ms?: number | null;
   seen_at: any | null;
   resolved_at: any | null;
+  type: string;
 };
 
 type UseCallsOpts = {
@@ -79,27 +81,30 @@ export function useCalls(opts: UseCallsOpts) {
     );
 
     const applySnap = (snap: QuerySnapshot<DocumentData>) => {
-  let list = snap.docs.map((d) => {
-    const data = d.data() as any;
+    let list = snap.docs.map((d) => {
+      const data = d.data() as any;
 
-    // ✅ normalización fuerte
-    const status: CallStatus =
-      data.status === "pending" || data.status === "seen" || data.status === "resolved"
-        ? data.status
-        : "pending";
+      // ✅ normalización fuerte
+      const status: CallStatus =
+        data.status === "pending" || data.status === "seen" || data.status === "resolved"
+          ? data.status
+          : "pending";
 
-    return {
-      id: d.id,
-      venue_id: String(data.venue_id ?? ""),
-      qr_location_id: String(data.qr_location_id ?? ""),
-      qr_location_name: data.qr_location_name ?? null,
-      status,
-      created_at: data.created_at ?? null,
-      created_at_ms: typeof data.created_at_ms === "number" ? data.created_at_ms : null,
-      seen_at: data.seen_at ?? null,
-      resolved_at: data.resolved_at ?? null,
-    } as CallDoc;
-  });
+      const type: CallTypes = data.type === "bill" || data.type === "call" ? data.type : "call";
+
+      return {
+        id: d.id,
+        venue_id: String(data.venue_id ?? ""),
+        qr_location_id: String(data.qr_location_id ?? ""),
+        qr_location_name: data.qr_location_name ?? null,
+        status,
+        type,
+        created_at: data.created_at ?? null,
+        created_at_ms: typeof data.created_at_ms === "number" ? data.created_at_ms : null,
+        seen_at: data.seen_at ?? null,
+        resolved_at: data.resolved_at ?? null,
+      } as CallDoc;
+    });
 
   if (!includeResolved) list = list.filter((c) => c.status !== "resolved");
 

@@ -288,7 +288,7 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 ) : (
                   <Banknote className="w-4 h-4 text-green-600" />
                 )}
-                <span className="font-medium text-foreground text-sm capitalize">{order.payment_method === "efectivo" ? "Efectivo" : "Mercado Pago"}</span>
+                <span className="font-medium text-foreground text-sm">{order.payment_method === "efectivo" ? "Efectivo en mesa" : order.payment_method === "efectivo-counter" ? "Efectivo en caja" : "Mercado Pago"}</span>
               </div>
             )}
             
