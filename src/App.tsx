@@ -17,6 +17,7 @@ import AdminHome from "./pages/AdminHome";
 import AdminCreateVenue from "./pages/AdminCreateVenues";
 import CommerceHome from "./pages/CommerceHome";
 import Manual from "./pages/Manual";
+import DashboardAnalytics from "./pages/DashboardAnalytics";
 
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const App = () => (
 						element={<CommerceSettings />}
 					/>
 					<Route path="/panel/printer-settings" element={<PrinterSettings />} />
+					<Route path="/panel/analytics" element={<DashboardAnalytics />} />
 					<Route path="/panel/promotions" element={<Promotions />} />
 					<Route path="*" element={<NotFound />} />
 				</Routes>

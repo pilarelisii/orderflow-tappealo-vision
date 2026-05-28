@@ -12,4 +12,5 @@ export interface Product {
   enabled: boolean;
   venue_id: string;
   featured?: boolean;
+  complements?: string[];
 }

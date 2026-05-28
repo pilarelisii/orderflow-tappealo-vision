@@ -21,6 +21,13 @@ const isIndexError = (err: any) =>
   typeof err?.message === "string" &&
   err.message.toLowerCase().includes("requires an index");
 
+const MAX_COMPLEMENTS = 3;
+
+const normalizeComplements = (ids: string[] = [], selfId: string) =>
+  Array.from(new Set(ids))
+    .filter((id) => id && id !== selfId)
+    .slice(0, MAX_COMPLEMENTS);
+
 export function useProducts() {
   const { venue } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,7 +72,7 @@ export function useProducts() {
             enabled: Boolean(data.enabled),
             image_url: data.image_url ?? null,
             featured: Boolean(data.featured ?? false),
-            
+            complements: Array.isArray(data.complements) ? data.complements : [],
             created_at: data.created_at,
             updated_at: data.updated_at,
           } as Product;
@@ -131,18 +138,53 @@ export function useProducts() {
     }
   };
 
-  const updateQuantity = async (productId: string, quantity: number) => {
-    const safe = Math.max(0, Number(quantity) || 0);
+  const syncMutualComplements = async (
+  productId: string,
+  previousComplements: string[],
+  nextComplements: string[]
+) => {
+  const prev = normalizeComplements(previousComplements, productId);
+  const next = normalizeComplements(nextComplements, productId);
 
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, quantity: safe } : p))
+  const added = next.filter((id) => !prev.includes(id));
+  const removed = prev.filter((id) => !next.includes(id));
+
+  // Agregar relación inversa
+  for (const complementId of added) {
+    const complementProduct = products.find((p) => p.id === complementId);
+    if (!complementProduct) continue;
+
+    const current = normalizeComplements(
+      (complementProduct as any).complements ?? [],
+      complementId
     );
 
-    await updateDoc(doc(db, "products", productId), {
-      quantity: safe,
+    if (current.includes(productId)) continue;
+    if (current.length >= MAX_COMPLEMENTS) continue;
+
+    await updateDoc(doc(db, "products", complementId), {
+      complements: [...current, productId],
       updated_at: serverTimestamp(),
     });
-  };
+  }
+
+  // Quitar relación inversa
+  for (const complementId of removed) {
+    const complementProduct = products.find((p) => p.id === complementId);
+    if (!complementProduct) continue;
+
+    const current = Array.isArray((complementProduct as any).complements)
+      ? (complementProduct as any).complements
+      : [];
+
+    if (!current.includes(productId)) continue;
+
+    await updateDoc(doc(db, "products", complementId), {
+      complements: current.filter((id: string) => id !== productId),
+      updated_at: serverTimestamp(),
+    });
+  }
+};
 
   const updateProduct = async (productId: string, patch: Partial<Product> & { imageFile?: File | null }) => {
     if (!venue?.id) throw new Error("No venue");
@@ -169,8 +211,25 @@ export function useProducts() {
     if (patch.enabled !== undefined) payload.enabled = !!patch.enabled;
     if (image_url !== undefined) payload.image_url = image_url ?? null;
     if (patch.featured !== undefined) payload.featured = !!patch.featured;
-
+    if ((patch as any).complements !== undefined) {
+      payload.complements = normalizeComplements(
+        (patch as any).complements,
+        productId
+      );
+    }
+    const previousComplements = normalizeComplements(
+      ((products.find((p) => p.id === productId) as any)?.complements ?? []),
+      productId
+    );
     await updateDoc(doc(db, "products", productId), payload);
+
+    if (payload.complements !== undefined) {
+      await syncMutualComplements(
+        productId,
+        previousComplements,
+        payload.complements
+      );
+    }
   };
 
   const createProduct = async (data: {
@@ -180,6 +239,8 @@ export function useProducts() {
     category_id: string;
     quantity: number;
     imageFile?: File | null;
+    image_path: string | null;
+    complements?: string[];
   }) => {
     if (!venue?.id) throw new Error("No venue");
 
@@ -197,7 +258,10 @@ export function useProducts() {
       await uploadBytes(fileRef, data.imageFile);
       image_url = await getDownloadURL(fileRef);
     }
-
+    const normalizedComplements = normalizeComplements(
+      data.complements ?? [],
+      nextId
+    );
     await setDoc(doc(db, "products", nextId), {
       venue_id: venue.id,
       category_id: data.category_id || "SIN CATEGORIA",
@@ -208,10 +272,13 @@ export function useProducts() {
       enabled: true,
       featured: false,
       image_url,
+      image_path: data.image_path || null,
+      complements: normalizedComplements,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     });
-  };
+    await syncMutualComplements(nextId, [], normalizedComplements);
+  }
 
   const removeProduct = async (productId: string) => {
     await deleteDoc(doc(db, "products", productId));
@@ -221,7 +288,6 @@ export function useProducts() {
     products: sortedProducts,
     loading,
     toggleEnabled,
-    updateQuantity,
     updateProduct,
     createProduct,
     removeProduct,

@@ -55,6 +55,7 @@ function normalizeOrderItems(items: any[]): OrderItem[] {
     name: safeString(it.name) ?? "",
     description: safeString(it.description) ?? "",
     quantity: safeNumber(it.quantity, 0),
+    unit_price: safeNumber(it.unit_price, 0),
   }));
 }
 
@@ -266,6 +267,7 @@ app.get("/public/:slug/products", async (req, res) => {
         quantity: safeNumber(x.quantity, 0),
         enabled: Boolean(x.enabled),
         created_at: x.created_at ?? null,
+        complements: x.complements ?? null,
         updated_at: x.updated_at ?? null,
       };
     });
@@ -568,7 +570,7 @@ app.post("/public/:slug/mp/preference", async (req, res) => {
 
     // 2) Body
     const body = req.body ?? {};
-    const items = Array.isArray(body.items) ? body.items : [];
+    const items = normalizeOrderItems(body.items);
     const total = Number(body.total ?? 0);
 
     const qr_location_id = String(body.qr_location_id ?? "").trim();
@@ -601,11 +603,7 @@ app.post("/public/:slug/mp/preference", async (req, res) => {
 
     // 3) Preferencia MP (SIN orderId inexistente)
     const preferencePayload = {
-      items: items.map((it: any) => ({
-        title: String(it.name ?? "Producto"),
-        quantity: Number(it.quantity ?? 1),
-        unit_price: Number(it.unit_price ?? it.price ?? 0),
-      })),
+      items,
 
       back_urls: {
         success: success_url,

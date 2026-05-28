@@ -1,7 +1,7 @@
 import { Order, OrderStatus } from "@/types/order";
 import { OrderCard } from "./OrderCard";
 import { cn } from "@/lib/utils";
-
+import { GroupedOrderCard } from "./GroupOrderCard";
 interface OrderColumnProps {
   title: string;
   status: OrderStatus;
@@ -11,6 +11,29 @@ interface OrderColumnProps {
   canMoveNext: boolean;
   canMovePrev: boolean;
   venueName?: string;
+}
+
+const groupOrdersByLocationAndStatus = (orders: Order[]) => {
+
+  const groups = new Map<string, Order[]>();
+
+  orders.forEach((order) => {
+
+    const locationKey = order.qr_location_id || "sin-ubicacion";
+
+    const key = `${locationKey}-${order.status}`;
+
+    if (!groups.has(key)) {
+
+      groups.set(key, []);
+
+    }
+
+    groups.get(key)!.push(order);
+
+  });
+
+  return Array.from(groups.values());
 }
 
 const columnStyles: Record<OrderStatus, string> = {
@@ -40,59 +63,77 @@ export function OrderColumn({
   venueName,
 }: OrderColumnProps) {
   return (
-    <div
-      className={cn(
-        "flex-1 min-w-[280px] max-w-[350px] bg-card rounded-xl border-t-4 shadow-sm",
-        columnStyles[status]
-      )}
-    >
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold text-lg text-foreground">{title}</h2>
-          <span
-            className={cn(
-              "text-sm font-bold px-2.5 py-1 rounded-full text-primary-foreground",
-              badgeStyles[status]
-            )}
-          >
-            {orders.length}
-          </span>
-        </div>
+		<div
+			className={cn(
+				"flex-1 min-w-[280px] max-w-[350px] bg-card rounded-xl border-t-4 shadow-sm",
+				columnStyles[status]
+			)}
+		>
+			<div className="p-4 border-b border-border">
+				<div className="flex items-center justify-between">
+					<h2 className="font-bold text-lg text-foreground">{title}</h2>
+					<span
+						className={cn(
+							"text-sm font-bold px-2.5 py-1 rounded-full text-primary-foreground",
+							badgeStyles[status]
+						)}
+					>
+						{orders.length}
+					</span>
+				</div>
 
-        {status === "terminadas" && (
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-            <span className="text-sm font-medium text-muted-foreground">
-              Total Facturado Hoy
-            </span>
-            <span className="text-lg font-bold text-foreground">
-              $
-              {orders
-                .reduce((sum, order) => sum + Number(order.total || 0), 0)
-                .toLocaleString("es-AR")}
-            </span>
-          </div>
-        )}
-      </div>
+				{status === "terminadas" && (
+					<div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+						<span className="text-sm font-medium text-muted-foreground">
+							Total Facturado Hoy
+						</span>
+						<span className="text-lg font-bold text-foreground">
+							$
+							{orders
+								.reduce((sum, order) => sum + Number(order.total || 0), 0)
+								.toLocaleString("es-AR")}
+						</span>
+					</div>
+				)}
+			</div>
 
-      <div className="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
-        {orders.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">Sin pedidos</p>
-          </div>
-        ) : (
-          orders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onMoveNext={onMoveNext}
-              onMovePrev={onMovePrev}
-              canMoveNext={canMoveNext}
-              canMovePrev={canMovePrev}
-              venueName={venueName}
-            />
-          ))
-        )}
-      </div>
-    </div>
-  );
+			<div className="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+				{orders.length === 0 ? (
+					<div className="text-center py-8 text-muted-foreground">
+						<p className="text-sm">Sin pedidos</p>
+					</div>
+				) : (
+					groupOrdersByLocationAndStatus(orders).map((group) => {
+						if (group.length === 1) {
+							const order = group[0];
+
+							return (
+								<OrderCard
+									key={order.id}
+									order={order}
+									onMoveNext={onMoveNext}
+									onMovePrev={onMovePrev}
+									canMoveNext={canMoveNext}
+									canMovePrev={canMovePrev}
+									venueName={venueName}
+								/>
+							);
+						}
+
+						return (
+							<GroupedOrderCard
+								key={`${group[0].qr_location_id}-${group[0].status}`}
+								orders={group}
+								onMoveNext={onMoveNext}
+								onMovePrev={onMovePrev}
+								canMoveNext={canMoveNext}
+								canMovePrev={canMovePrev}
+								venueName={venueName}
+							/>
+						);
+					})
+				)}
+			</div>
+		</div>
+	);
 }

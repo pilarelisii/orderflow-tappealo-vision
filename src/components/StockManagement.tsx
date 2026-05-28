@@ -41,6 +41,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/types/product";
 import { FeaturedProductsModal } from "@/components/FeaturedProductsModal";
 import { ImageUploadBox } from "./ImageUploadBox";
+import ComplementsSelector from "./ComplementsSelector";
 
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -54,6 +55,7 @@ interface EditedProduct {
   image_url: string | null;
   image_path: string | null;
   imagePreview: string | null;
+  complements: string[];
 }
 
 interface NewProduct {
@@ -65,6 +67,7 @@ interface NewProduct {
   image_url: string | null;
   image_path: string | null;
   imagePreview: string | null;
+  complements: string[];
 }
 
 const initialNewProduct: NewProduct = {
@@ -76,6 +79,7 @@ const initialNewProduct: NewProduct = {
   image_url: null,
   image_path: null,
   imagePreview: null,
+  complements: [],
 };
 
 export function StockManagement() {
@@ -85,7 +89,6 @@ export function StockManagement() {
     products,
     loading,
     toggleEnabled,
-    updateQuantity,
     updateProduct,
     createProduct,
     removeProduct,
@@ -103,7 +106,10 @@ export function StockManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newProduct, setNewProduct] = useState<NewProduct>(initialNewProduct);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-
+  const [complementsModal, setComplementsModal] = useState<{
+		mode: "new" | "edit";
+		productId?: string;
+	} | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // ✅ entityId estable para el upload mientras el modal está abierto
@@ -124,13 +130,16 @@ export function StockManagement() {
     const map: Record<string, EditedProduct> = {};
     products.forEach((p) => {
       map[p.id] = {
-        name: p.name ?? "",
-        description: p.description || "",
-        price: Number(p.price ?? 0),
-        image_url: p.image_url ?? null,
-        image_path: (p as any).image_path ?? null,
-        imagePreview: p.image_url ?? null,
-      };
+				name: p.name ?? "",
+				description: p.description || "",
+				price: Number(p.price ?? 0),
+				image_url: p.image_url ?? null,
+				image_path: (p as any).image_path ?? null,
+				imagePreview: p.image_url ?? null,
+				complements: Array.isArray((p as any).complements)
+					? (p as any).complements
+					: [],
+			};
     });
     setEditedProducts(map);
     setIsEditMode(true);
@@ -159,6 +168,7 @@ export function StockManagement() {
       if (e.name.length > 100) return toast.error("El nombre no puede tener más de 100 caracteres");
       if ((e.description || "").length > 200) return toast.error("La descripción no puede tener más de 200 caracteres");
       if (Number(e.price) <= 0) return toast.error("El precio debe ser mayor a 0");
+
     }
 
     setIsSaving(true);
@@ -168,11 +178,14 @@ export function StockManagement() {
         if (!e) continue;
 
         const changed =
-          e.name.trim() !== (p.name ?? "") ||
-          (e.description.trim() || null) !== (p.description || null) ||
-          Number(e.price) !== Number(p.price) ||
-          (e.image_url ?? null) !== (p.image_url ?? null) ||
-          (e.image_path ?? null) !== ((p as any).image_path ?? null);
+					e.name.trim() !== (p.name ?? "") ||
+					(e.description.trim() || null) !== (p.description || null) ||
+					Number(e.price) !== Number(p.price) ||
+			(JSON.stringify(e.complements ?? []) !==
+						JSON.stringify((p as any).complements ?? []) || (
+							e.image_url ?? null
+						)) != (p.image_url ?? null) ||
+					(e.image_path ?? null) !== ((p as any).image_path ?? null);
 
         if (!changed) continue;
 
@@ -182,6 +195,7 @@ export function StockManagement() {
           price: Number(e.price),
           image_url: e.image_url,
           image_path: e.image_path,
+		  complements: e.complements || [],
         } as any);
       }
 
@@ -216,6 +230,7 @@ export function StockManagement() {
         image_url: newProduct.image_url,
         image_path: newProduct.image_path,
         category_id: categoryId,
+		complements: newProduct.complements
       } as any);
 
       toast.success("Producto agregado");
@@ -223,7 +238,6 @@ export function StockManagement() {
       setIsAddDialogOpen(false);
       setNewProduct(initialNewProduct);
 
-      // ✅ nuevo entityId para el próximo producto
       newProductEntityIdRef.current = makeId();
     } catch (e) {
       console.error(e);
@@ -251,13 +265,7 @@ export function StockManagement() {
     try {
       await toggleEnabled(product.id, product.enabled);
     } catch {}
-  };
-
-  const onUpdateQty = async (productId: string, quantity: number) => {
-    try {
-      await updateQuantity(productId, quantity);
-    } catch {}
-  };
+  }
 
   if (!venue?.id) {
     return (
@@ -308,8 +316,11 @@ export function StockManagement() {
 								<Pencil className="h-4 w-4 mr-1" />
 								Editar
 							</Button>
-							<Button size="sm" onClick={() => setIsAddDialogOpen(true)}
-							disabled={venue?.plan === "demo" && products.length >= 1}>
+							<Button
+								size="sm"
+								onClick={() => setIsAddDialogOpen(true)}
+								disabled={venue?.plan === "demo" && products.length >= 1}
+							>
 								<Plus className="h-4 w-4 mr-1" />
 								Agregar
 							</Button>
@@ -422,7 +433,6 @@ export function StockManagement() {
 																className="h-8 text-sm font-medium"
 																maxLength={100}
 															/>
-
 															<div className="flex gap-2">
 																<Input
 																	value={e?.description || ""}
@@ -458,6 +468,20 @@ export function StockManagement() {
 																	/>
 																</div>
 															</div>
+															{isEditMode && (
+																<Button
+																	variant="outline"
+																	size="sm"
+																	onClick={() =>
+																		setComplementsModal({
+																			mode: "edit",
+																			productId: product.id,
+																		})
+																	}
+																>
+																	Complementos ({e?.complements?.length ?? 0}/3)
+																</Button>
+															)}
 														</div>
 													) : (
 														<>
@@ -576,6 +600,7 @@ export function StockManagement() {
 								<SelectTrigger>
 									<SelectValue placeholder="Seleccionar categoría" />
 								</SelectTrigger>
+
 								<SelectContent>
 									{enabledCategories.map((cat) => (
 										<SelectItem key={cat.id} value={cat.id}>
@@ -603,6 +628,22 @@ export function StockManagement() {
 							}}
 						/>
 
+						<div className="space-y-2">
+							<Label>Complementos</Label>
+
+							<Button
+								type="button"
+								variant="outline"
+								className="w-full justify-between"
+								onClick={() => setComplementsModal({ mode: "new" })}
+							>
+								Seleccionar complementos
+								<span className="text-muted-foreground">
+									{newProduct.complements.length}/3
+								</span>
+							</Button>
+						</div>
+
 						<div className="flex justify-end gap-2 pt-4">
 							<Button
 								variant="outline"
@@ -628,7 +669,49 @@ export function StockManagement() {
 					</div>
 				</DialogContent>
 			</Dialog>
+			<Dialog
+				open={!!complementsModal}
+				onOpenChange={(open) => {
+					if (!open) setComplementsModal(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-lg">
+					<DialogHeader>
+						<DialogTitle>Seleccionar complementos</DialogTitle>
+					</DialogHeader>
 
+					{complementsModal?.mode === "new" && (
+						<ComplementsSelector
+							products={products}
+							value={newProduct.complements}
+							onChange={(ids) =>
+								setNewProduct((p) => ({ ...p, complements: ids }))
+							}
+						/>
+					)}
+
+					{complementsModal?.mode === "edit" && complementsModal.productId && (
+						<ComplementsSelector
+							products={products}
+							currentProductId={complementsModal.productId}
+							value={
+								editedProducts[complementsModal.productId]?.complements ?? []
+							}
+							onChange={(ids) =>
+								handleFieldChange(
+									complementsModal.productId!,
+									"complements",
+									ids
+								)
+							}
+						/>
+					)}
+
+					<div className="flex justify-end pt-4">
+						<Button onClick={() => setComplementsModal(null)}>Listo</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 			<CategoriesModal open={categoriesOpen} onOpenChange={setCategoriesOpen} />
 
 			{/* DELETE CONFIRM */}
