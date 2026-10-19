@@ -31,6 +31,7 @@ import {
 import Notifications from "@/components/Notifications";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import Sidebar from "@/components/Sidebar";
+import { useReservations } from "@/hooks/useReservations";
 
 const columns: { title: string; status: OrderStatus }[] = [
 	{ title: "Pedido Entrante", status: "entrante" },
@@ -62,6 +63,7 @@ const CommerceHome = () => {
 		getAvailableDates,
 		updateOrderStatus,
 	} = useOrders();
+	const { pendingCount: pendingReservations } = useReservations();
 
 	useEffect(() => {
 		if (!authLoading && !isAuthenticated) {
@@ -172,6 +174,21 @@ const CommerceHome = () => {
 				<h1 className="text-2xl font-bold text-foreground">Comandas</h1>
 				<p className="text-muted-foreground">Panel de Gestión de Pedidos</p>
 			</div>
+
+			{venue?.enabled === true && pendingReservations > 0 && (
+				<div className="px-6 pb-4">
+					<Link
+						to="/panel/reservations"
+						className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 hover:bg-amber-100 transition-colors"
+					>
+						<span className="text-sm font-medium">
+							Tenés {pendingReservations}{" "}
+							{pendingReservations === 1 ? "reserva pendiente" : "reservas pendientes"} de confirmar
+						</span>
+						<ChevronRight className="h-4 w-4" />
+					</Link>
+				</div>
+			)}
 
 			{/* Columns */}
 			{venue?.enabled === true && (

@@ -12,6 +12,10 @@ import {
 	QrCode,
 	Store,
 	Tag,
+	Ticket,
+	CalendarDays,
+	Wallet,
+	Star,
 	Book,
 	ChartColumnStacked,
 } from "lucide-react";
@@ -49,6 +53,46 @@ const Sidebar = () => {
 						<div className="flex items-center gap-3">
 							<Tag className="h-5 w-5 text-muted-foreground" />
 							<span className="font-medium">Promociones</span>
+						</div>
+						<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					</Link>
+					<Link
+						to="/panel/coupons"
+						className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					>
+						<div className="flex items-center gap-3">
+							<Ticket className="h-5 w-5 text-muted-foreground" />
+							<span className="font-medium">Cupones</span>
+						</div>
+						<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					</Link>
+					<Link
+						to="/panel/reservations"
+						className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					>
+						<div className="flex items-center gap-3">
+							<CalendarDays className="h-5 w-5 text-muted-foreground" />
+							<span className="font-medium">Reservas</span>
+						</div>
+						<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					</Link>
+					<Link
+						to="/panel/cash-closing"
+						className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					>
+						<div className="flex items-center gap-3">
+							<Wallet className="h-5 w-5 text-muted-foreground" />
+							<span className="font-medium">Cierre de caja</span>
+						</div>
+						<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					</Link>
+					<Link
+						to="/panel/reviews"
+						className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+					>
+						<div className="flex items-center gap-3">
+							<Star className="h-5 w-5 text-muted-foreground" />
+							<span className="font-medium">Opiniones</span>
 						</div>
 						<ChevronRight className="h-4 w-4 text-muted-foreground" />
 					</Link>

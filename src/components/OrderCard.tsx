@@ -151,6 +151,12 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
                 <strong>Notas:</strong> ${order.additional_comments}
               </div>
             ` : ''}
+            ${order.coupon_code ? `
+              <div style="margin-top: 2mm;">
+                <div>Subtotal: $${Number(order.subtotal ?? order.total).toLocaleString('es-CL')}</div>
+                <div>Cupón ${order.coupon_code}: -$${Number(order.discount_amount ?? 0).toLocaleString('es-CL')}</div>
+              </div>
+            ` : ''}
             <div class="total">
               TOTAL: $${order.total.toLocaleString('es-CL')}
             </div>
@@ -312,6 +318,12 @@ export function OrderCard({ order, onMoveNext, onMovePrev, canMoveNext, canMoveP
               </div>
             </div>
             <p className="text-sm text-foreground truncate">{itemsSummary}</p>
+            {order.coupon_code && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cupón <span className="font-mono font-medium text-foreground">{order.coupon_code}</span>{" "}
+                · -${Number(order.discount_amount ?? 0).toLocaleString("es-CL")}
+              </p>
+            )}
           </CollapsibleTrigger>
 
           <CollapsibleContent>

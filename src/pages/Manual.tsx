@@ -24,6 +24,9 @@ import {
 	StickyNote,
 	ArrowUpDown,
 	WalletCards,
+	Ticket,
+	CalendarDays,
+	Wallet,
 	type LucideIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -71,6 +74,10 @@ const sections: SectionItem[] = [
 	{ id: "ordenes-viejas", label: "Órdenes Viejas", icon: Clock3 },
 	{ id: "metodos-pago", label: "Métodos de Pago", icon: CreditCard },
 	{ id: "pagos-mesa-caja", label: "Pagos Mesa / Caja", icon: WalletCards },
+	{ id: "cupones", label: "Cupones de Descuento", icon: Ticket },
+	{ id: "reservas", label: "Reservas", icon: CalendarDays },
+	{ id: "cierre-caja", label: "Cierre de Caja", icon: Wallet },
+	{ id: "opiniones", label: "Opiniones", icon: Star },
 ];
 export default function Manual() {
 	const [activeSection, setActiveSection] = useState("vista-principal");
@@ -814,6 +821,201 @@ export default function Manual() {
 							</Grid>
 
 							<WarningCard text="Para Mercado Pago, es importante usar credenciales correctas y verificar que pertenezcan a la cuenta del comercio." />
+						</Section>
+
+						<Section
+							id="cupones"
+							title="Cupones de Descuento"
+							icon={Ticket}
+							number="16"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Creá códigos de descuento para tus clientes (por ejemplo
+								BIENVENIDO10) y compartilos en redes, flyers o por WhatsApp. El
+								cliente los ingresa en el menú al confirmar su pedido y el
+								descuento se aplica automáticamente.
+							</Paragraph>
+
+							<StepItem
+								step="1"
+								title="Activar cupones en el menú"
+								text="Desde Configuración → Cupones (o Comercio → Funciones del menú), activá “Aceptar cupones en el menú público”. Mientras esté apagado, el campo de cupón no aparece."
+							/>
+							<StepItem
+								step="2"
+								title="Crear un cupón"
+								text="Tocá “Agregar”, escribí el código y elegí si el descuento es un porcentaje (%) o un monto fijo ($)."
+							/>
+							<StepItem
+								step="3"
+								title="Definir condiciones (opcional)"
+								text="Podés ponerle fecha de vencimiento, un pedido mínimo y un límite de usos. Cuando se agota o vence, deja de aceptarse."
+							/>
+
+							<Grid>
+								<FeatureCard
+									title="Validación segura"
+									description="El descuento se calcula en el servidor: el cliente no puede modificar el total."
+								/>
+								<FeatureCard
+									title="Visible en las comandas"
+									description="Cada pedido muestra el código usado y el monto descontado, también en el ticket impreso."
+								/>
+								<FeatureCard
+									title="Contador de usos"
+									description="En la lista de cupones ves cuántas veces se usó cada uno."
+								/>
+							</Grid>
+
+							<InfoCard text="Funciona con todos los medios de pago, incluido Mercado Pago: el cliente paga directamente el total con descuento." />
+						</Section>
+
+						<Section
+							id="reservas"
+							title="Reservas de Mesa"
+							icon={CalendarDays}
+							number="17"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Tus clientes pueden reservar una mesa directamente desde el menú
+								digital, eligiendo día, horario y cantidad de personas. Vos las
+								recibís en el panel y las confirmás con un toque.
+							</Paragraph>
+
+							<StepItem
+								step="1"
+								title="Activar las reservas"
+								text="Entrá a Configuración → Reservas y activá “Recibir reservas desde el menú público”. En el menú aparece un botón con un calendario junto al de información."
+							/>
+							<StepItem
+								step="2"
+								title="Horarios por día"
+								text="En “Horarios y mesas” → Horarios definís qué días se reserva y en qué franja (podés copiar un día a todos), cada cuánto hay un turno, la anticipación mínima, hasta cuántos días antes se puede reservar y los días cerrados (feriados o eventos)."
+							/>
+							<StepItem
+								step="3"
+								title="Mesas y capacidad"
+								text="Tus QRs “En el lugar” son tus mesas. A cada una le indicás cuántos lugares tiene y si se ofrece para reservar. También elegís cuánto dura una reserva y si se pueden juntar mesas para grupos grandes. Si preferís no trabajar por mesa, elegí “Por cubiertos” y poné el máximo de personas por turno."
+							/>
+							<StepItem
+								step="4"
+								title="Automatización"
+								text="Activá “Confirmar automáticamente” para que las reservas con lugar queden confirmadas solas, y “Marcar No vino” para liberar la mesa si el cliente no llega pasada la tolerancia."
+							/>
+
+							<Grid>
+								<FeatureCard
+									title="Solo horarios con lugar"
+									description="El cliente ve únicamente los horarios donde hay una mesa libre para su cantidad de personas."
+								/>
+								<FeatureCard
+									title="Mesa asignada sola"
+									description="Cada reserva toma la mesa más chica donde entran todos; si no hay, combina mesas libres."
+								/>
+								<FeatureCard
+									title="Sin doble reserva"
+									description="Dos clientes no pueden quedarse con la misma mesa en el mismo horario."
+								/>
+								<FeatureCard
+									title="Vista de ocupación"
+									description="En la pestaña Ocupación ves una grilla mesa por horario con lo reservado de cada día."
+								/>
+								<FeatureCard
+									title="Reservas telefónicas"
+									description="Con “Nueva reserva” cargás las que llegan por teléfono: el sistema sugiere la mesa y podés cambiarla."
+								/>
+								<FeatureCard
+									title="Contacto por WhatsApp"
+									description="Desde cada reserva podés escribirle al cliente con un mensaje ya armado."
+								/>
+							</Grid>
+
+							<InfoCard text="Mientras una reserva está Pendiente o Confirmada, su mesa queda bloqueada durante la duración configurada. Si la rechazás, la cancelás o se marca “No vino”, la mesa se libera automáticamente." />
+						</Section>
+
+						<Section
+							id="cierre-caja"
+							title="Cierre de Caja"
+							icon={Wallet}
+							number="18"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Al terminar el turno, hacé el arqueo desde Configuración → Cierre
+								de caja. Tappealo suma automáticamente todo lo vendido desde el
+								último cierre y lo compara con lo que contaste en la caja.
+							</Paragraph>
+
+							<Grid>
+								<FeatureCard
+									title="Ventas por medio de pago"
+									description="Pago en mesa, pago en caja y Mercado Pago, con cantidad de pedidos y montos."
+								/>
+								<FeatureCard
+									title="Indicadores del turno"
+									description="Total cobrado, cantidad de pedidos, ticket promedio y descuentos por cupones."
+								/>
+								<FeatureCard
+									title="Historial e impresión"
+									description="Cada cierre queda guardado y se puede imprimir en formato ticket."
+								/>
+							</Grid>
+
+							<StepItem
+								step="1"
+								title="Cargar el arqueo"
+								text="Ingresá el fondo inicial, el efectivo contado, lo cobrado con tarjeta/posnet y los gastos o retiros pagados con la caja."
+							/>
+							<StepItem
+								step="2"
+								title="Revisar la diferencia"
+								text="Se compara lo esperado en el local (pagos en mesa + caja) con lo declarado. Vas a ver si hay sobrante, faltante o si está todo justo."
+							/>
+							<StepItem
+								step="3"
+								title="Cerrar la caja"
+								text="Al confirmar se guarda el cierre y los próximos pedidos empiezan a contar para un nuevo turno."
+							/>
+
+							<WarningCard text="Solo cuentan como cobrados los pedidos en “Terminadas” (y los pagados con Mercado Pago). Si quedan pedidos sin terminar, el sistema te avisa antes de cerrar." />
+						</Section>
+
+						<Section
+							id="opiniones"
+							title="Opiniones de Platos"
+							icon={Star}
+							number="19"
+							activeSection={activeSection}
+							sectionRefs={sectionRefs}
+						>
+							<Paragraph>
+								Cuando movés un pedido a “Terminadas”, el cliente recibe en el
+								menú una invitación para calificar con estrellas cada plato que
+								pidió y dejar un comentario si quiere. Solo puede opinar quien
+								realmente hizo el pedido, y una sola vez.
+							</Paragraph>
+
+							<Grid>
+								<FeatureCard
+									title="Estrellas en el menú"
+									description="Cada plato muestra su promedio y la cantidad de opiniones. Podés ocultarlo desde Configuración → Opiniones."
+								/>
+								<FeatureCard
+									title="Resumen por plato"
+									description="Mirá qué platos gustan más y cuáles conviene revisar, con el promedio de cada uno."
+								/>
+								<FeatureCard
+									title="Comentarios"
+									description="Leé lo que escriben tus clientes y filtrá por plato o solo los que tienen comentario."
+								/>
+							</Grid>
+
+							<InfoCard text="Al final, el cliente también puede calificar (de forma opcional) su experiencia con Tappealo. Esa opinión llega al equipo de Tappealo para seguir mejorando la app." />
 						</Section>
 					</div>
 				</section>

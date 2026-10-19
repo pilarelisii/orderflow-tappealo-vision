@@ -11,6 +11,10 @@ import NotFound from "./pages/NotFound";
 import CommerceSettings from "./pages/CommerceSettings";
 import PrinterSettings from "./pages/PrinterSettings";
 import Promotions from "./pages/Promotions";
+import Coupons from "./pages/Coupons";
+import Reservations from "./pages/Reservations";
+import CashClosing from "./pages/CashClosing";
+import Reviews from "./pages/Reviews";
 import AdminRoute from "./components/AdminRoute";
 import LoginAdmin from "./pages/LoginAdmin";
 import AdminHome from "./pages/AdminHome";
@@ -61,6 +65,10 @@ const App = () => (
 					<Route path="/panel/printer-settings" element={<PrinterSettings />} />
 					<Route path="/panel/analytics" element={<DashboardAnalytics />} />
 					<Route path="/panel/promotions" element={<Promotions />} />
+					<Route path="/panel/coupons" element={<Coupons />} />
+					<Route path="/panel/reservations" element={<Reservations />} />
+					<Route path="/panel/cash-closing" element={<CashClosing />} />
+					<Route path="/panel/reviews" element={<Reviews />} />
 					<Route path="*" element={<NotFound />} />
 				</Routes>
 			</BrowserRouter>

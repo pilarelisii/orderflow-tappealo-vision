@@ -21,4 +21,7 @@ export interface Order {
   ref_order_id: string;
   venue_id: string;
   payment_method: string;
+  coupon_code?: string | null;
+  discount_amount?: number | null;
+  subtotal?: number | null;
 }

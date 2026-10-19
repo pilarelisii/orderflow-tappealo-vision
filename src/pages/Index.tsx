@@ -48,10 +48,9 @@ function Icon({ name, className = "" }) {
 				<path d="M4 7h16M4 12h16M4 17h16" />
 			</>
 		),
-		sparkles: (
+		check: (
 			<>
-				<path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3Z" />
-				<path d="M19 15l.7 2.2L22 18l-2.3.8L19 21l-.7-2.2L16 18l2.3-.8L19 15Z" />
+				<path d="M20 6 9 17l-5-5" />
 			</>
 		),
 		message: (
@@ -79,6 +78,18 @@ function Icon({ name, className = "" }) {
 			<>
 				<path d="M3 7h18v12H3z" />
 				<path d="M16 12h5v4h-5zM3 7l14-3v3" />
+			</>
+		),
+		ticket: (
+			<>
+				<path d="M3 6h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4z" />
+				<path d="M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01" />
+			</>
+		),
+		calendar: (
+			<>
+				<path d="M4 6h16v15H4zM4 10h16M8 3v4M16 3v4" />
+				<path d="m9 15 2 2 4-4" />
 			</>
 		),
 	};
@@ -141,6 +152,21 @@ const features = [
 		title: "Carga inicial con Excel",
 		text: "Pensado para acelerar la implementación y cargar el menú completo en menos tiempo.",
 	},
+	{
+		icon: "ticket",
+		title: "Cupones de descuento",
+		text: "Creá códigos con porcentaje o monto fijo, vencimiento y límite de usos. El cliente los aplica en el menú al pedir.",
+	},
+	{
+		icon: "calendar",
+		title: "Reservas de mesa",
+		text: "Tus clientes reservan día, horario y personas desde el menú. Vos las confirmás desde el panel.",
+	},
+	{
+		icon: "wallet",
+		title: "Cierre de caja",
+		text: "Arqueo por turno con ventas por medio de pago, diferencias de caja e impresión del cierre.",
+	},
 ];
 
 const steps = [
@@ -159,13 +185,16 @@ const adminItems = [
 	"Crear mesas y generar QR únicos",
 	"Recibir avisos cuando un cliente llama al mozo",
 	"Integración con Mercado Pago",
+	"Crear cupones de descuento para tus clientes",
+	"Recibir y confirmar reservas de mesa",
+	"Hacer el cierre de caja de cada turno",
 ];
 
 const benefits = [
-	["Menos espera", "El cliente pide cuando quiere, sin depender del mozo."],
-	["Menos errores", "El pedido llega registrado y asociado a la mesa."],
-	["Más venta", "Imágenes, destacados y mejor presentación del menú."],
-	["Más orden", "Pedidos y estados centralizados en el panel."],
+	["Espera más corta", "El cliente pide cuando quiere, sin depender del mozo."],
+	["Pedidos sin errores", "Llegan registrados y asociados a la mesa correcta."],
+	["Mejor presentación", "Imágenes y destacados que ayudan a vender más."],
+	["Operación centralizada", "Pedidos, reservas y caja, todo en un mismo panel."],
 ];
 
 const futureItems = [
@@ -221,6 +250,14 @@ const faqs = [
 		"Permiten que el cliente llame al mozo o haga su pedido desde la mesa, agilizando la atención y reduciendo la espera.",
 	],
 	[
+		"¿Puedo tomar reservas y ofrecer descuentos?",
+		"Sí. Podés activar reservas de mesa desde el menú y crear cupones de descuento con vencimiento, pedido mínimo y límite de usos.",
+	],
+	[
+		"¿Cómo controlo la caja al final del día?",
+		"Con el cierre de caja: Tappealo suma las ventas del turno por medio de pago, vos cargás lo contado y te muestra si hay sobrante o faltante.",
+	],
+	[
 		"¿Se pueden cargar muchos productos?",
 		"Sí. Para todos los planes, el sistema permite cargar platos, promociones y categorías ilimitadas.",
 	],
@@ -256,7 +293,7 @@ export default function Index() {
         }
       `}</style>
 
-			<section className="relative min-h-screen border-b border-[#d8c2ad] bg-[radial-gradient(circle_at_50%_0%,rgba(139,90,60,0.22),transparent_38%),linear-gradient(rgba(90,53,31,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(90,53,31,0.045)_1px,transparent_1px)] bg-[size:100%_100%,96px_96px,96px_96px]">
+			<section className="relative min-h-screen border-b border-[#d8c2ad] bg-[radial-gradient(circle_at_50%_0%,rgba(139,90,60,0.18),transparent_42%)]">
 				<header className="absolute inset-x-0 top-0 z-20 border-b border-[#d8c2ad] bg-[#fff7ec]/85 backdrop-blur-xl">
 					<div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
 						<a
@@ -316,11 +353,6 @@ export default function Index() {
 					className="relative z-10 mx-auto flex max-w-7xl flex-col items-center px-5 pb-20 pt-36 text-center md:px-8 md:pt-44"
 				>
 					<div className="max-w-5xl">
-						<Reveal className="mx-auto mb-7 inline-flex items-center gap-2 rounded-full border border-[#d8c2ad] bg-[#fffaf3]/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.28em] text-[#5a351f] shadow-sm">
-							<Icon name="sparkles" className="h-4 w-4" />
-							Plataforma gastronómica
-						</Reveal>
-
 						<Reveal delay={100}>
 							<h1 className="text-5xl font-black leading-[0.95] tracking-[-0.06em] text-[#2b1a10] md:text-8xl">
 								La operación de tu restaurante,{" "}
@@ -369,91 +401,22 @@ export default function Index() {
 						</Reveal>
 					</div>
 
-					<Reveal delay={500} className="relative mt-16 w-full max-w-6xl">
+					<Reveal delay={500} className="relative mt-16 w-full max-w-5xl">
 						<div className="absolute -inset-4 rounded-[2.5rem] bg-[#8b5a3c]/20 blur-3xl" />
 
-						<div className="relative overflow-hidden rounded-[2rem] border border-[#d8c2ad] bg-[#fffaf3] shadow-2xl float-soft">
-							<div className="flex items-center justify-between border-b border-[#d8c2ad] bg-[#fff7ec] px-5 py-4">
-								<div className="flex gap-2" aria-hidden="true">
-									<span className="h-3 w-3 rounded-full bg-[#8b5a3c]" />
-									<span className="h-3 w-3 rounded-full bg-[#d8c2ad]" />
-									<span className="h-3 w-3 rounded-full bg-[#5a351f]" />
-								</div>
-
-								<div className="rounded-full bg-[#f6eadb] px-4 py-2 text-xs text-[#7a6657]">
-									tappealo.com/panel
-								</div>
-
-								<div className="w-[52px]" />
-							</div>
-
-							<div className="grid gap-0 md:grid-cols-[0.9fr_1.3fr]">
-								<div className="border-b border-[#d8c2ad] bg-[#fffaf3] p-6 text-left md:border-b-0 md:border-r">
-									<div className="mb-6 flex items-center gap-3">
-										<div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#5a351f] text-[#fff7ec]">
-											<Icon name="qr" className="h-6 w-6" />
-										</div>
-
-										<div>
-											<p className="font-black text-[#2b1a10]">Mesa 12</p>
-											<p className="text-sm text-[#7a6657]">
-												Pedido recibido · 20:43
-											</p>
-										</div>
-									</div>
-
-									<div className="space-y-3">
-										{[
-											"Burger Tappealo x2",
-											"Papas rústicas x1",
-											"Limonada x2",
-										].map((item) => (
-											<div
-												key={item}
-												className="rounded-2xl border border-[#d8c2ad] bg-white p-4 text-sm font-medium text-[#2b1a10] shadow-sm"
-											>
-												{item}
-											</div>
-										))}
-									</div>
-
-									<div className="mt-5 rounded-2xl border border-[#cfa98a] bg-[#f6eadb] p-4 text-sm font-semibold text-[#5a351f]">
-										El cliente solicitó atención del mozo.
-									</div>
-								</div>
-
-								<div className="bg-white p-6 text-left">
-									<div className="mb-5 flex items-center justify-between gap-4">
-										<div>
-											<p className="text-sm uppercase tracking-[0.2em] text-[#8b5a3c]">
-												Menú digital
-											</p>
-											<h3 className="text-2xl font-black text-[#2b1a10]">
-												Tu restaurante
-											</h3>
-										</div>
-
-										<div className="rounded-full border border-[#d8c2ad] bg-[#fff7ec] px-4 py-2 text-sm text-[#7a6657]">
-											Abierto
-										</div>
-									</div>
-
-									<div className="grid gap-4 sm:grid-cols-3">
-										{["Entradas", "Principales", "Bebidas"].map((item) => (
-											<div
-												key={item}
-												className="rounded-2xl border border-[#d8c2ad] bg-[#fffaf3] p-4 shadow-sm"
-											>
-												<div className="mb-4 h-24 rounded-xl bg-gradient-to-br from-[#d8c2ad] via-[#f6eadb] to-[#8b5a3c]" />
-												<p className="font-bold text-[#2b1a10]">{item}</p>
-												<p className="mt-1 text-xs text-[#7a6657]">
-													Imagen, descripción y precio
-												</p>
-											</div>
-										))}
-									</div>
-								</div>
-							</div>
+						<div className="relative overflow-hidden rounded-[1.5rem] border border-[#d8c2ad] bg-black shadow-2xl">
+							<video
+								src="/videos/comandas.mp4"
+								autoPlay
+								loop
+								muted
+								playsInline
+								className="aspect-video w-full object-cover"
+							/>
+							<span className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
+								<span className="h-2 w-2 rounded-full bg-[#4ade80]" />
+								Panel en vivo
+							</span>
 						</div>
 					</Reveal>
 				</div>
@@ -563,9 +526,11 @@ export default function Index() {
 						<Reveal
 							key={item}
 							delay={index * 80}
-							className="flex gap-4 border-b border-[#d8c2ad] py-4 last:border-b-0"
+							className="flex items-center gap-4 border-b border-[#d8c2ad] py-4 last:border-b-0"
 						>
-							<span className="font-black text-[#8b5a3c]">0{index + 1}</span>
+							<span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#f6eadb] text-[#5a351f]">
+								<Icon name="check" className="h-4 w-4" />
+							</span>
 							<p className="font-bold text-[#2b1a10]">{item}</p>
 						</Reveal>
 					))}
@@ -599,9 +564,9 @@ export default function Index() {
 							Una plataforma gastronómica completa.
 						</h2>
 						<p className="mt-5 text-lg leading-8 text-[#7a6657]">
-							La base es el menú QR con pedidos y comunicación. A partir de ahí,
-							Tappealo puede evolucionar hacia reservas, métricas y herramientas
-							de fidelización.
+							La base es el menú QR con pedidos, reservas, cupones y cierre de
+							caja. A partir de ahí, Tappealo sigue sumando integraciones y
+							herramientas de fidelización.
 						</p>
 					</div>
 

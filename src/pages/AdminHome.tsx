@@ -39,6 +39,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import FullScreenLoader from "@/components/FullScreenLoader";
+import AdminAppReviews from "@/components/AdminAppReviews";
 
 function normSlugClient(s: string) {
 	return s
@@ -296,6 +297,8 @@ export default function AdminHome() {
 					/>
 					<StatCard title="Sin plan" value={planStats.sinPlan} icon={Store} />
 				</div>
+
+				<AdminAppReviews />
 
 				{/* Listado */}
 				<div className="bg-card border border-border rounded-lg overflow-hidden">

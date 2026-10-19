@@ -49,6 +49,9 @@ const mapDocToOrder = (id: string, data: any): Order => ({
 	ref_order_id: data.ref_order_id ?? null,
 	payment_method: data.payment_method ?? null,
 	venue_id: data.venue_id ?? null,
+	coupon_code: data.coupon_code ?? null,
+	discount_amount: data.discount_amount != null ? Number(data.discount_amount) : null,
+	subtotal: data.subtotal != null ? Number(data.subtotal) : null,
 });
 
 export function useOrders() {

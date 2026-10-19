@@ -45,3 +45,34 @@ export const adminSetVenueEnabled = onCall(async (request) => {
 
   return { ok: true };
 });
+
+/** Opiniones sobre Tappealo que dejan los clientes desde el menú (solo admins). */
+export const adminListAppReviews = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
+  await assertAdmin(request.auth.uid);
+
+  const limit = Math.min(500, Math.max(1, Number(request.data?.limit ?? 200)));
+  const snap = await admin
+    .firestore()
+    .collection("app_reviews")
+    .orderBy("created_at", "desc")
+    .limit(limit)
+    .get();
+
+  return {
+    reviews: snap.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        venue_id: x.venue_id ?? null,
+        venue_name: x.venue_name ?? null,
+        venue_slug: x.venue_slug ?? null,
+        stars: Number(x.stars ?? 0),
+        comment: x.comment ?? null,
+        created_at: x.created_at?.toDate?.().toISOString() ?? null,
+      };
+    }),
+  };
+});

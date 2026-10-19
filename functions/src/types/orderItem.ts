@@ -3,4 +3,5 @@ export interface OrderItem {
   name: string;
   description: string;
   product_id: string | null;
+  unit_price: number;
 }

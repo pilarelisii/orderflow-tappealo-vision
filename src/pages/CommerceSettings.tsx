@@ -16,6 +16,11 @@ import {
 	Eye,
 	EyeOff,
 	NotebookPen,
+	Sparkles,
+	Ticket,
+	CalendarDays,
+	Wallet,
+	ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,6 +33,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { Textarea } from "@/components/ui/textarea";
+import { useVenueSettings } from "@/hooks/useVenueSettings";
 
 const isImage = (f: File) => f.type?.startsWith("image/")
 const max5mb = (f: File) => f.size <= 5 * 1024 * 1024;
@@ -91,6 +97,20 @@ const ComercioSettings = () => {
 
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
+	const { settings: features, updateSettings: updateFeatures } = useVenueSettings();
+
+	const toggleFeature = async (
+		key: "coupons_enabled" | "reservations_enabled",
+		value: boolean
+	) => {
+		try {
+			await updateFeatures({ [key]: value });
+			toast.success("Configuración actualizada");
+		} catch (e) {
+			console.error(e);
+			toast.error("No se pudo actualizar la configuración");
+		}
+	};
   	const fileInputRef = useRef<HTMLInputElement | null>(null);
 
 	// ✅ campos
@@ -353,7 +373,7 @@ const ComercioSettings = () => {
 		}
 	}
 
-	if (authLoading || loading) {
+	if (authLoading) {
 		return (
 			<FullScreenLoader/>
 		);
@@ -608,6 +628,75 @@ const ComercioSettings = () => {
 						</div>
 					</div>
 				</div>
+				<div className="bg-card border border-border rounded-lg p-6 mt-6">
+					{/* Funciones */}
+					<div className="flex items-center gap-3 mb-4">
+						<Sparkles className="h-6 w-6 text-primary" />
+						<div>
+							<h2 className="text-lg font-semibold text-foreground">
+								Funciones del menú
+							</h2>
+							<p className="text-sm text-muted-foreground">
+								Activá herramientas extra para tus clientes. Se guardan al instante.
+							</p>
+						</div>
+					</div>
+
+					<div className="flex items-center justify-between gap-4 py-3 border-b border-border">
+						<div className="flex items-start gap-3">
+							<Ticket className="h-5 w-5 text-muted-foreground mt-0.5" />
+							<div>
+								<p className="font-medium text-foreground">Cupones de descuento</p>
+								<p className="text-xs text-muted-foreground">
+									Tus clientes pueden ingresar un código al confirmar el pedido.{" "}
+									<Link to="/panel/coupons" className="text-primary hover:underline">
+										Gestionar cupones
+									</Link>
+								</p>
+							</div>
+						</div>
+						<Switch
+							checked={features.coupons_enabled}
+							onCheckedChange={(v) => toggleFeature("coupons_enabled", v)}
+						/>
+					</div>
+
+					<div className="flex items-center justify-between gap-4 py-3 border-b border-border">
+						<div className="flex items-start gap-3">
+							<CalendarDays className="h-5 w-5 text-muted-foreground mt-0.5" />
+							<div>
+								<p className="font-medium text-foreground">Reservas de mesa</p>
+								<p className="text-xs text-muted-foreground">
+									Aparece un botón “Reservar” en el menú público.{" "}
+									<Link to="/panel/reservations" className="text-primary hover:underline">
+										Ver reservas y horarios
+									</Link>
+								</p>
+							</div>
+						</div>
+						<Switch
+							checked={features.reservations_enabled}
+							onCheckedChange={(v) => toggleFeature("reservations_enabled", v)}
+						/>
+					</div>
+
+					<Link
+						to="/panel/cash-closing"
+						className="flex items-center justify-between gap-4 py-3 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
+					>
+						<div className="flex items-start gap-3">
+							<Wallet className="h-5 w-5 text-muted-foreground mt-0.5" />
+							<div>
+								<p className="font-medium text-foreground">Cierre de caja</p>
+								<p className="text-xs text-muted-foreground">
+									Arqueo por turno con ventas por medio de pago e impresión del ticket.
+								</p>
+							</div>
+						</div>
+						<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					</Link>
+				</div>
+
 				<div className="bg-card border border-border rounded-lg p-6 mt-6">
 					{/* Metodos de pago */}
 					<div className="flex items-center gap-3 mb-4">
