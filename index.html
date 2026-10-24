@@ -6,6 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#5a351f" />
 
+    <!-- Google tag (gtag.js) con Consent Mode v2: no se usan cookies de medición
+         hasta que la persona acepta en el aviso de cookies (ver CookieConsent.tsx) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      var tappealoConsent = null;
+      try { tappealoConsent = localStorage.getItem("tappealo_cookie_consent"); } catch (e) {}
+      var tappealoGranted = tappealoConsent === "granted" ? "granted" : "denied";
+      gtag("consent", "default", {
+        ad_storage: tappealoGranted,
+        ad_user_data: tappealoGranted,
+        ad_personalization: tappealoGranted,
+        analytics_storage: tappealoGranted,
+        wait_for_update: 500
+      });
+      gtag("js", new Date());
+      gtag("config", "AW-18488140651");
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18488140651"></script>
+
     <title>Tappealo | Menú digital QR y gestión de pedidos para restaurantes</title>
     <meta
       name="description"

@@ -17,6 +17,7 @@ import CashClosing from "./pages/CashClosing";
 import Reviews from "./pages/Reviews";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
+import CookieConsent from "./components/CookieConsent";
 import AdminRoute from "./components/AdminRoute";
 import LoginAdmin from "./pages/LoginAdmin";
 import AdminHome from "./pages/AdminHome";
@@ -34,6 +35,7 @@ const App = () => (
 			<Toaster />
 			<Sonner />
 			<BrowserRouter>
+				<CookieConsent />
 				<Routes>
 					<Route path="/login" element={<Login />} />
 					<Route path="/login-admin" element={<LoginAdmin />} />

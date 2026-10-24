@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
+import { OPEN_COOKIE_PREFS_EVENT } from "@/lib/analytics";
 
 export type LegalBlock =
 	| { type: "p"; text: string }
@@ -149,6 +150,13 @@ export function LegalFooter() {
 				<Link to="/terminos" className="hover:text-[#2b1a10] hover:underline">
 					Términos y condiciones
 				</Link>
+				<span aria-hidden>·</span>
+				<button
+					onClick={() => window.dispatchEvent(new Event(OPEN_COOKIE_PREFS_EVENT))}
+					className="hover:text-[#2b1a10] hover:underline"
+				>
+					Preferencias de cookies
+				</button>
 			</div>
 		</footer>
 	);
