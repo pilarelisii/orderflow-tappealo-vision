@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import tappealoLogo from "@/assets/tappealo-logo.png";
 import DemoSection from "@/components/DemoSection";
+import { LegalFooter } from "@/components/LegalPage";
 
 const WHATSAPP_LINK =
 	"https://wa.me/542212021296/?text=Hola!%20quiero%20más%20información%20sobre%20Tappealo";
@@ -627,9 +628,7 @@ export default function Index() {
 				</Reveal>
 			</section>
 
-			<footer className="border-t border-[#d8c2ad] px-5 py-8 text-center text-sm text-[#7a6657] md:px-8">
-				· © Tappealo 2026 ·
-			</footer>
+			<LegalFooter />
 
 			<a
 				href={WHATSAPP_LINK}

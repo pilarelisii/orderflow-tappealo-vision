@@ -15,6 +15,8 @@ import Coupons from "./pages/Coupons";
 import Reservations from "./pages/Reservations";
 import CashClosing from "./pages/CashClosing";
 import Reviews from "./pages/Reviews";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Terms from "./pages/Terms";
 import AdminRoute from "./components/AdminRoute";
 import LoginAdmin from "./pages/LoginAdmin";
 import AdminHome from "./pages/AdminHome";
@@ -54,6 +56,10 @@ const App = () => (
 					/>
 					<Route path="/" element={<Index />} />
 					<Route path="/manual" element={<Manual />} />
+					<Route path="/privacidad" element={<PrivacyPolicy />} />
+					<Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
+					<Route path="/terminos" element={<Terms />} />
+					<Route path="/terminos-y-condiciones" element={<Terms />} />
 					<Route path="/panel" element={<CommerceHome />} />
 					<Route path="/panel/stock" element={<Stock />} />
 					<Route path="/panel/qr-settings" element={<QRSettings />} />
